@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Simple Test - 2 Tasks" company="" webLink="" view-date="2024-01-15" view-index="0" gantt-divider-location="300" resource-divider-location="322" version="3.3" locale="en">
+  <description>A simple test file with just 2 tasks to verify connector rendering</description>
+  <view zooming-state="default:6" id="gantt-chart">
+    <field id="tpd3" name="Name" width="200" order="0"/>
+    <field id="tpd4" name="Begin date" width="100" order="1"/>
+    <field id="tpd5" name="End date" width="100" order="2"/>
+    <option id="taskLabelRight" name="display.label.right" value="name"/>
+    <option id="showProgress" value="true"/>
+    <option id="showArrows" value="true"/>
+  </view>
+  <calendars>
+    <day-types>
+      <day-type id="0"/>
+      <day-type id="1"/>
+      <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+      <only-show-weekends value="false"/>
+      <overriden-day-types/>
+      <days/>
+    </day-types>
+  </calendars>
+  <tasks empty-milestones="true">
+    <taskproperties>
+      <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+      <taskproperty id="tpd1" name="priority" type="default" valuetype="icon"/>
+      <taskproperty id="tpd2" name="info" type="default" valuetype="icon"/>
+      <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+      <taskproperty id="tpd4" name="begindate" type="default" valuetype="date"/>
+      <taskproperty id="tpd5" name="enddate" type="default" valuetype="date"/>
+      <taskproperty id="tpd6" name="duration" type="default" valuetype="duration"/>
+      <taskproperty id="tpd7" name="completion" type="default" valuetype="percent"/>
+      <taskproperty id="tpd14" name="color" type="default" valuetype="color"/>
+    </taskproperties>
+    
+    <!-- First task -->
+    <task id="1" name="Task A" start="2024-01-01" duration="10" complete="100">
+      <notes><![CDATA[The first task in the sequence]]></notes>
+    </task>
+    
+    <!-- Second task - depends on first with FS -->
+    <task id="2" name="Task B" start="2024-01-15" duration="10" complete="0">
+      <notes><![CDATA[Depends on Task A finishing first (FS)]]></notes>
+      <depend id="1" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+  </tasks>
+  <resources/>
+  <allocations/>
+  <previous/>
+  <roles roleset-name="Default"/>
+  <roles>
+    <role id="0" name="Default"/>
+  </roles>
+</project>

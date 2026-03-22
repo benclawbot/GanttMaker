@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="Sample Project" company="" webLink="" view-date="2024-01-15" view-index="0" gantt-divider-location="693" resource-divider-location="322" version="3.3" locale="en">
+  <description>A sample Gantt project for testing</description>
+  <view zooming-state="default:6" id="gantt-chart">
+    <field id="tpd3" name="Name" width="257" order="0"/>
+    <field id="tpd4" name="Begin date" width="139" order="1"/>
+    <field id="tpd5" name="End date" width="130" order="2"/>
+    <option id="taskLabelRight" value="name"/>
+    <option id="showProgress" value="true"/>
+    <option id="showArrows" value="true"/>
+  </view>
+  <calendars>
+    <day-types>
+      <day-type id="0"/>
+      <day-type id="1"/>
+      <default-week id="1" name="default" sun="1" mon="0" tue="0" wed="0" thu="0" fri="0" sat="1"/>
+      <only-show-weekends value="false"/>
+      <overriden-day-types/>
+      <days/>
+    </day-types>
+  </calendars>
+  <tasks empty-milestones="true">
+    <taskproperties>
+      <taskproperty id="tpd0" name="type" type="default" valuetype="icon"/>
+      <taskproperty id="tpd1" name="priority" type="default" valuetype="icon"/>
+      <taskproperty id="tpd2" name="info" type="default" valuetype="icon"/>
+      <taskproperty id="tpd3" name="name" type="default" valuetype="text"/>
+      <taskproperty id="tpd4" name="begindate" type="default" valuetype="date"/>
+      <taskproperty id="tpd5" name="enddate" type="default" valuetype="date"/>
+      <taskproperty id="tpd6" name="duration" type="default" valuetype="duration"/>
+      <taskproperty id="tpd7" name="completion" type="default" valuetype="percent"/>
+      <taskproperty id="tpd14" name="color" type="default" valuetype="color"/>
+    </taskproperties>
+    <!-- Master task - 100% complete -->
+    <task id="1" name="Master Task" start="2024-01-01" duration="60" complete="100" expand="true">
+      <notes><![CDATA[Top-level project overview]]></notes>
+    </task>
+    
+    <!-- Level 2 tasks - depend on Master Task -->
+    <task id="2" name="Phase 1 - Planning" start="2024-01-01" duration="10" complete="100">
+      <depend id="1" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <task id="3" name="Phase 2 - Design" start="2024-01-15" duration="15" complete="85">
+      <depend id="2" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <!-- Level 3 tasks - branching from Phase 2 -->
+    <task id="4" name="Architecture Design" start="2024-01-15" duration="8" complete="100">
+      <depend id="3" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <task id="5" name="UI/UX Design" start="2024-01-20" duration="10" complete="63">
+      <depend id="3" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <!-- Level 4 tasks - further breakdown -->
+    <task id="6" name="Development Prep" start="2024-02-01" duration="5" complete="0">
+      <depend id="4" type="0" difference="0" hardness="Normal"/>
+      <depend id="5" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <!-- Level 3 tasks - second branch -->
+    <task id="7" name="Phase 3 - Development" start="2024-02-05" duration="20" complete="100">
+      <depend id="6" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <task id="8" name="Frontend Dev" start="2024-02-05" duration="15" complete="100">
+      <depend id="7" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <task id="9" name="Backend Dev" start="2024-02-10" duration="18" complete="100">
+      <depend id="7" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <!-- Level 2 tasks - Testing phase -->
+    <task id="10" name="Phase 4 - Testing" start="2024-02-26" duration="10" complete="85">
+      <depend id="8" type="0" difference="0" hardness="Normal"/>
+      <depend id="9" type="0" difference="0" hardness="Normal"/>
+    </task>
+    
+    <!-- Final milestone -->
+    <task id="11" name="Project Complete" start="2024-03-07" duration="0" complete="0" meeting="false">
+      <depend id="10" type="0" difference="0" hardness="Normal"/>
+    </task>
+  </tasks>
+  <resources>
+    <resource id="1" name="Alice" function="Developer"/>
+    <resource id="2" name="Bob" function="Developer"/>
+    <resource id="3" name="Charlie" function="Tester"/>
+  </resources>
+  <allocations>
+    <allocation task-id="5" resource-id="1" function="1" responsible="true" load="100.0"/>
+    <allocation task-id="6" resource-id="2" function="1" responsible="true" load="100.0"/>
+    <allocation task-id="7" resource-id="3" function="2" responsible="true" load="100.0"/>
+  </allocations>
+  <previous/>
+  <roles roleset-name="Default"/>
+  <roles>
+    <role id="0" name="Architect"/>
+    <role id="1" name="Developer"/>
+    <role id="2" name="Tester"/>
+    <role id="3" name="Manager"/>
+  </roles>
+</project>
