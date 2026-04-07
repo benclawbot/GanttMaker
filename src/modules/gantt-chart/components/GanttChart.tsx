@@ -62,7 +62,34 @@ export function GanttChart() {
   const [isDragging, setIsDragging] = useState(false);
   const chartRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const taskListRef = useRef<HTMLDivElement>(null);
+  const isScrolling = useRef(false);
   const [timelineWidth, setTimelineWidth] = useState(600);
+  
+  // Scroll synchronization between task list and timeline
+  useEffect(() => {
+    const taskList = taskListRef.current;
+    const timeline = timelineRef.current;
+    if (!taskList || !timeline) return;
+    
+    const syncScroll = (source: HTMLElement, target: HTMLElement) => {
+      if (isScrolling.current) return;
+      isScrolling.current = true;
+      target.scrollTop = source.scrollTop;
+      requestAnimationFrame(() => { isScrolling.current = false; });
+    };
+    
+    const handleTaskListScroll = () => syncScroll(taskList, timeline);
+    const handleTimelineScroll = () => syncScroll(timeline, taskList);
+    
+    taskList.addEventListener('scroll', handleTaskListScroll);
+    timeline.addEventListener('scroll', handleTimelineScroll);
+    
+    return () => {
+      taskList.removeEventListener('scroll', handleTaskListScroll);
+      timeline.removeEventListener('scroll', handleTimelineScroll);
+    };
+  }, []);
   
   // Measure timeline width
   useEffect(() => {
@@ -704,9 +731,9 @@ export function GanttChart() {
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto" ref={chartRef}>
-        <div className="flex">
-          <div className="w-56 flex-shrink-0">
+      <div className="flex-1 overflow-hidden min-h-0 relative" ref={chartRef} style={{ height: 'calc(100% - 120px)' }}>
+        <div className="flex absolute inset-0">
+          <div className="w-56 flex-shrink-0 overflow-y-auto h-full" ref={taskListRef}>
             {tasks.map((task) => {
               const isSelected = selectedTaskId === task.id || selectedTaskIds.has(task.id);
               const hasKids = hasChildren(task.id);
@@ -755,7 +782,7 @@ export function GanttChart() {
             })}
           </div>
           
-          <div className="flex-1 relative" ref={timelineRef}>
+          <div className="flex-1 relative overflow-y-auto h-full" ref={timelineRef}>
             <svg
               className="absolute top-0 left-0 z-10"
               width={timelineWidth + TIMELINE_PADDING * 2}
