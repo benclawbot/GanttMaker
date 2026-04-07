@@ -17,7 +17,7 @@ import { DependencyType } from './modules/task-manager/types';
 // ============================================================================
 
 function AppContent() {
-  const { state, loadProject, resetProject } = useTaskManager();
+  const { state, loadProject, resetProject, canUndo, canRedo, undo, redo } = useTaskManager();
   
   // Handle New Project
   const handleNewProject = useCallback(() => {
@@ -134,6 +134,10 @@ function AppContent() {
           onSaveFile={handleSaveFile}
           canSave={state.tasks.length > 0}
           projectName={state.name}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
         />
       </header>
       <main className="flex-1 p-4 min-h-0">
