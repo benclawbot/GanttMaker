@@ -136,8 +136,8 @@ function AppContent() {
           projectName={state.name}
         />
       </header>
-      <main className="flex-1 p-4">
-        <div className="bg-white rounded-lg shadow h-full">
+      <main className="flex-1 p-4 min-h-0">
+        <div className="bg-white rounded-lg shadow h-full overflow-hidden">
           <GanttChart />
         </div>
       </main>
