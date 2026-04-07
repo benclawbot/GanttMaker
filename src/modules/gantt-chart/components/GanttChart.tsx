@@ -517,6 +517,14 @@ export function GanttChart() {
     };
   }, []);
   
+  const todayLineX = useMemo(() => {
+    const { start, totalDays } = timelineRange;
+    const today = new Date();
+    const daysOffset = getDaysDiff(start, today);
+    if (daysOffset < 0 || daysOffset > totalDays) return null;
+    return TIMELINE_PADDING + (daysOffset / totalDays) * timelineWidth;
+  }, [timelineRange, timelineWidth]);
+
   /**
    * Generate SVG elements for all dependency connectors.
    * Creates clean, type-aware connector paths with proper anchoring.
@@ -755,6 +763,17 @@ export function GanttChart() {
               style={{ marginLeft: TIMELINE_PADDING }}
               onClick={handleLinksContainerClick}
             >
+              {todayLineX !== null && tasks.length > 0 && (
+                <line
+                  x1={todayLineX}
+                  x2={todayLineX}
+                  y1={0}
+                  y2={tasks.length * ROW_HEIGHT}
+                  stroke="#ef4444"
+                  strokeWidth={2}
+                  style={{ pointerEvents: 'none' }}
+                />
+              )}
               {dependencyLines}
               {dragPreview}
             </svg>
