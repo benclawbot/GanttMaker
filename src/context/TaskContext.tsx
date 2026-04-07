@@ -2,10 +2,10 @@
  * Task Manager Context
  * 
  * React Context for managing task and dependency state across the application.
- * Provides a centralized store for project data.
+ * Provides a centralized store for project data with undo/redo support.
  */
 
-import React, { createContext, useContext, useReducer, useCallback, type ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useCallback, useEffect, type ReactNode } from 'react';
 import type { Task, Link } from '../modules/task-manager/types';
 
 // ============================================================================
@@ -21,6 +21,18 @@ export interface ProjectState {
   fileHandle: FileSystemFileHandle | null;
 }
 
+interface HistoryState extends ProjectState {
+  past: ProjectSnapshot[];
+  future: ProjectSnapshot[];
+}
+
+interface ProjectSnapshot {
+  id: string;
+  name: string;
+  tasks: Task[];
+  links: Link[];
+}
+
 type ProjectAction =
   | { type: 'SET_PROJECT'; payload: Partial<ProjectState> }
   | { type: 'SET_TASKS'; payload: Task[] }
@@ -32,20 +44,64 @@ type ProjectAction =
   | { type: 'DELETE_LINK'; payload: string | number }
   | { type: 'SET_DIRTY'; payload: boolean }
   | { type: 'SET_FILE_HANDLE'; payload: FileSystemFileHandle | null }
-  | { type: 'RESET_PROJECT' };
+  | { type: 'RESET_PROJECT' }
+  | { type: 'UNDO' }
+  | { type: 'REDO' };
 
 // ============================================================================
 // Initial State
 // ============================================================================
 
-const initialState: ProjectState = {
+const initialState: HistoryState = {
   id: crypto.randomUUID(),
   name: 'Untitled Project',
   tasks: [],
   links: [],
   isDirty: false,
   fileHandle: null,
+  past: [],
+  future: [],
 };
+
+// ============================================================================
+// History Helpers
+// ============================================================================
+
+const MAX_HISTORY_SIZE = 10;
+
+function createSnapshot(state: ProjectState): ProjectSnapshot {
+  return {
+    id: state.id,
+    name: state.name,
+    tasks: state.tasks,
+    links: state.links,
+  };
+}
+
+function statesEqual(a: ProjectSnapshot, b: ProjectSnapshot): boolean {
+  if (a.id !== b.id) return false;
+  if (a.name !== b.name) return false;
+  if (a.tasks.length !== b.tasks.length) return false;
+  if (a.links.length !== b.links.length) return false;
+  
+  for (let i = 0; i < a.tasks.length; i++) {
+    if (a.tasks[i].id !== b.tasks[i].id) return false;
+  }
+  
+  for (let i = 0; i < a.links.length; i++) {
+    if (a.links[i].id !== b.links[i].id) return false;
+  }
+  
+  return true;
+}
+
+function pushHistory(past: ProjectSnapshot[], snapshot: ProjectSnapshot): ProjectSnapshot[] {
+  const newPast = [...past, snapshot];
+  if (newPast.length > MAX_HISTORY_SIZE) {
+    return newPast.slice(newPast.length - MAX_HISTORY_SIZE);
+  }
+  return newPast;
+}
 
 // ============================================================================
 // Reducer
@@ -105,11 +161,80 @@ function projectReducer(state: ProjectState, action: ProjectAction): ProjectStat
       return { ...state, fileHandle: action.payload };
     
     case 'RESET_PROJECT':
-      return { ...initialState, id: crypto.randomUUID() };
+      return { 
+        id: crypto.randomUUID(),
+        name: 'Untitled Project',
+        tasks: [],
+        links: [],
+        isDirty: false,
+        fileHandle: null,
+      };
     
     default:
       return state;
   }
+}
+
+// ============================================================================
+// History Wrapper Reducer
+// ============================================================================
+
+function historyReducer(state: HistoryState, action: ProjectAction): HistoryState {
+  if (action.type === 'UNDO') {
+    if (state.past.length === 0) return state;
+    
+    const previous = state.past[state.past.length - 1];
+    const newPast = state.past.slice(0, state.past.length - 1);
+    
+    return {
+      ...state,
+      id: previous.id,
+      name: previous.name,
+      tasks: previous.tasks,
+      links: previous.links,
+      isDirty: true,
+      past: newPast,
+      future: [createSnapshot(state), ...state.future],
+    };
+  }
+  
+  if (action.type === 'REDO') {
+    if (state.future.length === 0) return state;
+    
+    const next = state.future[0];
+    const newFuture = state.future.slice(1);
+    
+    return {
+      ...state,
+      id: next.id,
+      name: next.name,
+      tasks: next.tasks,
+      links: next.links,
+      isDirty: true,
+      past: pushHistory(state.past, createSnapshot(state)),
+      future: newFuture,
+    };
+  }
+  
+  const newProjectState = projectReducer(state, action);
+  
+  const skipHistoryActions = ['SET_DIRTY', 'SET_FILE_HANDLE', 'RESET_PROJECT', 'UNDO', 'REDO'];
+  if (skipHistoryActions.includes(action.type)) {
+    return { ...newProjectState, past: state.past, future: state.future };
+  }
+  
+  const currentSnapshot = createSnapshot(state);
+  const newSnapshot = createSnapshot(newProjectState);
+  
+  if (statesEqual(currentSnapshot, newSnapshot)) {
+    return { ...newProjectState, past: state.past, future: state.future };
+  }
+  
+  return {
+    ...newProjectState,
+    past: pushHistory(state.past, currentSnapshot),
+    future: [],
+  };
 }
 
 // ============================================================================
@@ -134,6 +259,11 @@ interface TaskContextValue {
   setFileHandle: (handle: FileSystemFileHandle | null) => void;
   resetProject: () => void;
   loadProject: (data: { name: string; tasks: Task[]; links: Link[] }) => void;
+  // Undo/Redo operations
+  canUndo: boolean;
+  canRedo: boolean;
+  undo: () => void;
+  redo: () => void;
 }
 
 const TaskContext = createContext<TaskContextValue | null>(null);
@@ -155,7 +285,7 @@ export function TaskProvider({
   initialLinks = [],
   initialName = 'Untitled Project',
 }: TaskProviderProps) {
-  const [state, dispatch] = useReducer(projectReducer, {
+  const [state, dispatch] = useReducer(historyReducer, {
     ...initialState,
     name: initialName,
     tasks: initialTasks,
@@ -247,6 +377,50 @@ export function TaskProvider({
     []
   );
 
+  // Undo/Redo operations
+  const undo = useCallback(() => {
+    dispatch({ type: 'UNDO' });
+  }, []);
+
+  const redo = useCallback(() => {
+    dispatch({ type: 'REDO' });
+  }, []);
+
+  const canUndo = state.past.length > 0;
+  const canRedo = state.future.length > 0;
+
+  // Keyboard event listener for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isInputElement = 
+        e.target instanceof HTMLElement && 
+        (e.target.tagName === 'INPUT' || 
+         e.target.tagName === 'TEXTAREA' || 
+         e.target.isContentEditable);
+      
+      if (isInputElement) return;
+
+      const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+      
+      if (isCtrlOrCmd && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          redo();
+        } else {
+          undo();
+        }
+      }
+      
+      if (isCtrlOrCmd && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo]);
+
   const value: TaskContextValue = {
     state,
     addTask,
@@ -262,6 +436,10 @@ export function TaskProvider({
     setFileHandle,
     resetProject,
     loadProject,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
   };
 
   return <TaskContext.Provider value={value}>{children}</TaskContext.Provider>;
