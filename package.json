@@ -1,11 +1,8 @@
 {
   "name": "ganttmaker",
   "version": "1.0.0",
-  "description": "",
+  "description": "Gantt chart maker with .gan and .mpp support",
   "main": "dist-electron/main.js",
-  "directories": {
-    "doc": "docs"
-  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
