@@ -10,12 +10,14 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "electron:dev": "vite",
+    "electron:build": "vite build && electron-builder"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "@svar-ui/react-gantt": "^2.5.2",
     "react": "^19.2.4",
@@ -30,6 +32,10 @@
     "postcss": "^8.5.8",
     "typescript": "^5.9.3",
     "vite": "^8.0.1",
-    "vite-tsconfig-paths": "^6.1.1"
+    "vite-tsconfig-paths": "^6.1.1",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.0.0",
+    "vite-plugin-electron": "^0.29.1",
+    "vite-plugin-electron-renderer": "^0.14.0"
   }
 }
