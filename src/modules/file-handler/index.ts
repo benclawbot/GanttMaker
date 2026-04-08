@@ -15,7 +15,8 @@
  * const blob = await exportGanFile(projectData);
  */
 
-import { parseGanFile, validateGanFile } from './parsers';
+export { parseGanFile, validateGanFile } from './parsers';
+export { parseGanString } from './parsers/ganParser';
 import { serializeGanFile } from './serializers';
 import type { ProjectData } from './types';
 
