@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1",
     "electron:dev": "vite",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build && electron-builder --config electron-builder.json"
   },
   "keywords": [],
   "author": "",
