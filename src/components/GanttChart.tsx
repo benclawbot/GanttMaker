@@ -185,8 +185,8 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
     const x = side === 'start' ? bar.x : bar.x + bar.width;
     const y = bar.y;
     setDepDragFrom({ taskId, side, x, y });
-    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top + scrollTop });
-  }, [barMap, scrollTop]);
+    setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  }, [barMap]);
 
   useEffect(() => {
     if (!dragging && !depDragFrom) return;
@@ -194,7 +194,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
     const handleMouseMove = (e: MouseEvent) => {
       const rect = svgRef.current?.getBoundingClientRect();
       if (rect) {
-        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top + scrollTop });
+        setMousePos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
       }
 
       if (!dragging) return;
@@ -233,15 +233,14 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
         const rect = svgRef.current?.getBoundingClientRect();
         if (rect) {
           const mx = e.clientX - rect.left;
-          const my = e.clientY - rect.top + scrollTop;
-          const targetBar = bars.find((b) => {
-            return Math.abs(b.y - my) < ROW_HEIGHT / 2 &&
-              mx >= b.x - 10 && mx <= b.x + b.width + 10 &&
-              b.task.id !== depDragFrom.taskId;
-          });
+          const my = e.clientY - rect.top;
+          const targetRowIdx = Math.floor(my / ROW_HEIGHT);
+          const targetBar = bars[targetRowIdx];
 
-          if (targetBar) {
-            const toSide = mx < targetBar.x + targetBar.width / 2 ? 'start' : 'end';
+          if (targetBar && targetBar.task.id !== depDragFrom.taskId) {
+            const distToStart = Math.abs(mx - targetBar.x);
+            const distToEnd = Math.abs(mx - (targetBar.x + targetBar.width));
+            const toSide = distToStart <= distToEnd ? 'start' : 'end';
             let type: DependencyType;
             if (depDragFrom.side === 'end' && toSide === 'start') type = DependencyType.FS;
             else if (depDragFrom.side === 'start' && toSide === 'start') type = DependencyType.SS;
@@ -263,7 +262,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, depDragFrom, dayWidth, visibleTasks, updateTask, addDependency, bars, scrollTop]);
+  }, [dragging, depDragFrom, dayWidth, visibleTasks, updateTask, addDependency, bars]);
 
   // Render dependency arrows
   const depArrows = useMemo(() => {
@@ -704,3 +703,8 @@ function formatColHeader(date: Date, zoomLevel: string): string {
     default: return format(date, 'MM/dd');
   }
 }
+
+
+
+
+

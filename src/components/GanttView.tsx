@@ -108,6 +108,14 @@ export function GanttView() {
     setScrollTop(e.currentTarget.scrollTop);
   }, []);
 
+  // Keep grid scroll synced when chart scroll updates shared scrollTop
+  useEffect(() => {
+    if (!gridScrollRef.current) return;
+    if (Math.abs(gridScrollRef.current.scrollTop - scrollTop) > 1) {
+      gridScrollRef.current.scrollTop = scrollTop;
+    }
+  }, [scrollTop]);
+
   const ROW_HEIGHT = 32;
 
   return (
@@ -176,3 +184,4 @@ export function GanttView() {
     </div>
   );
 }
+

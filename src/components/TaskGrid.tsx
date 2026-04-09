@@ -99,7 +99,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
       </div>
 
       {/* Rows */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="flex-1 overflow-x-hidden">
         {tasks.map((task, rowIdx) => {
           const isSelected = selection.has(task.id);
           const isCollapsed = collapsedIds.has(task.id);
@@ -267,3 +267,4 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
     </div>
   );
 }
+
