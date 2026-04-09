@@ -141,14 +141,14 @@ export function GanttView() {
           </button>
           <button
             onClick={foldOneLevel}
-            className="text-[10px] text-gray-600 hover:text-gray-800 px-1.5 py-0.5 rounded hover:bg-gray-100"
+            className="text-xl text-gray-600 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100 font-bold"
             title="Fold one level"
           >
             −
           </button>
           <button
             onClick={unfoldOneLevel}
-            className="text-[10px] text-gray-600 hover:text-gray-800 px-1.5 py-0.5 rounded hover:bg-gray-100"
+            className="text-xl text-gray-600 hover:text-gray-800 px-2 py-0.5 rounded hover:bg-gray-100 font-bold"
             title="Unfold one level"
           >
             +
@@ -203,6 +203,7 @@ export function GanttView() {
     </div>
   );
 }
+
 
 
 
