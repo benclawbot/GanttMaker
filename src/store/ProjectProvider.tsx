@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Project, Task, Dependency, Resource, ProjectSettings } from '../types';
 import { TaskType, DependencyType } from '../types';
 import {
@@ -23,6 +23,36 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [selectedDependencyId, setSelectedDependencyId] = useState<string | null>(null);
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
   const [importReport, setImportReport] = useState<ImportCompatibilityReport | null>(null);
+
+  // Progressive fold/unfold depth (0 = only root level visible)
+  const [foldDepth, setFoldDepth] = useState(0);
+
+  // Compute max task level in the project
+  const maxTaskLevel = useMemo(() => {
+    if (project.tasks.length === 0) return 0;
+    return Math.max(...project.tasks.map(t => t.level), 0);
+  }, [project.tasks]);
+
+  // When foldDepth changes, recompute collapsedIds:
+  // A parent is collapsed if it has children AND its level >= foldDepth
+  useEffect(() => {
+    const newCollapsedIds = new Set(
+      project.tasks
+        .filter(t => getChildren(project.tasks, t.id).length > 0 && t.level >= foldDepth)
+        .map(t => t.id)
+    );
+    setCollapsedIds(newCollapsedIds);
+  }, [foldDepth, project.tasks]);
+
+  // Progressive unfold: reveal one more level
+  const unfoldOneLevel = useCallback(() => {
+    setFoldDepth(prev => Math.min(prev + 1, maxTaskLevel));
+  }, [maxTaskLevel]);
+
+  // Progressive fold: hide deepest level
+  const foldOneLevel = useCallback(() => {
+    setFoldDepth(prev => Math.max(prev - 1, 0));
+  }, []);
 
   // ============================================================================
   // Selection
@@ -478,6 +508,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     expandAll,
     collapseSubtree,
     expandSubtree,
+    foldOneLevel,
+    unfoldOneLevel,
     selection,
     selectTask,
     clearSelection,
@@ -505,7 +537,9 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     importReport,
     clearImportReport,
   }), [
-    project, view, collapsedIds, toggleCollapse, collapseAll, expandAll, collapseSubtree, expandSubtree, selection, selectTask,
+    project, view, collapsedIds, toggleCollapse, collapseAll, expandAll, collapseSubtree, expandSubtree,
+    foldOneLevel, unfoldOneLevel,
+    selection, selectTask,
     clearSelection, selectedDependencyId, selectDependency,
     addTask, updateTask, deleteSelectedTasks, indentTask, outdentTask,
     moveTaskUp, moveTaskDown, addDependency, deleteDependency,
@@ -528,6 +562,8 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
 
 
 
