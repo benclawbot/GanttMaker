@@ -90,7 +90,7 @@ export function Ribbon() {
             <rect x="9" y="3" width="12" height="6" rx="1" />
             <rect x="9" y="11" width="9" height="4" rx="1" />
           </svg>
-          <span className="font-bold text-sm tracking-wide">MS Project Clone</span>
+          <span className="font-bold text-sm tracking-wide">GanttMaker</span>
         </div>
         
         {/* Quick Access Toolbar */}
@@ -379,3 +379,4 @@ export function Ribbon() {
     </div>
   );
 }
+
