@@ -355,6 +355,14 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setSelectedDependencyId(null);
   }, []);
 
+  const newProject = useCallback(() => {
+    setProject(createDefaultProject());
+    setCollapsedIds(new Set());
+    setSelection(new Set());
+    setSelectedDependencyId(null);
+    setImportReport(null);
+  }, []);
+
   const updateProjectName = useCallback((name: string) => {
     setProject((prev) => ({ ...prev, name, isDirty: true }));
   }, []);
@@ -488,6 +496,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     updateResource,
     deleteResource,
     loadProject,
+    newProject,
     updateProjectName,
     updateSettings,
     openFile,
@@ -501,7 +510,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     addTask, updateTask, deleteSelectedTasks, indentTask, outdentTask,
     moveTaskUp, moveTaskDown, addDependency, deleteDependency,
     addResource, updateResource, deleteResource,
-    loadProject, updateProjectName, updateSettings,
+    loadProject, newProject, updateProjectName, updateSettings,
     openFile, saveFile, exportAs, importReport, clearImportReport,
   ]);
 
@@ -519,6 +528,9 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
+
 
 
 

@@ -284,6 +284,7 @@ export interface ProjectContextType {
   
   // Project operations
   loadProject: (project: Project) => void;
+  newProject: () => void;
   updateProjectName: (name: string) => void;
   updateSettings: (settings: Partial<ProjectSettings>) => void;
   
@@ -304,6 +305,7 @@ export function useProject(): ProjectContextType {
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
+
 
 
 

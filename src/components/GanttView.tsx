@@ -29,6 +29,13 @@ export function GanttView() {
         (e.target as HTMLElement).tagName === 'TEXTAREA' ||
         (e.target as HTMLElement).tagName === 'SELECT') return;
 
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'Space' || e.key === ' ')) {
+        e.preventDefault();
+        const firstSelected = selection.size > 0 ? Array.from(selection)[0] : undefined;
+        addTask(undefined, firstSelected);
+        return;
+      }
+
       switch (e.key) {
         case 'Delete':
         case 'Backspace':
@@ -43,14 +50,11 @@ export function GanttView() {
           clearSelection();
           setEditingCell(null);
           break;
-        case 'Insert':
-        case 'n':
-          if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            const firstSelected = selection.size > 0 ? Array.from(selection)[0] : undefined;
-            addTask(undefined, firstSelected);
-          }
+        case 'Insert': {
+          const firstSelected = selection.size > 0 ? Array.from(selection)[0] : undefined;
+          addTask(undefined, firstSelected);
           break;
+        }
         case 'Tab': {
           e.preventDefault();
           const selected = Array.from(selection);
@@ -131,7 +135,7 @@ export function GanttView() {
           <button
             onClick={() => addTask(undefined, selection.size === 1 ? Array.from(selection)[0] : undefined)}
             className="text-[10px] text-blue-600 hover:text-blue-800 px-1.5 py-0.5 rounded hover:bg-blue-50"
-            title="Add task (Ctrl+N)"
+            title="Add task (Ctrl+Space)"
           >
             + Task
           </button>
@@ -205,6 +209,9 @@ export function GanttView() {
     </div>
   );
 }
+
+
+
 
 
 

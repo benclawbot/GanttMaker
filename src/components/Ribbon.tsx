@@ -74,7 +74,7 @@ export function Ribbon() {
   const {
     project, view, setView, selection, deleteSelectedTasks,
     addTask, indentTask, outdentTask, moveTaskUp, moveTaskDown,
-    openFile, saveFile, exportAs, updateSettings,
+    openFile, saveFile, exportAs, updateSettings, newProject,
   } = useProject();
 
   const selectedId = selection.size === 1 ? Array.from(selection)[0] : undefined;
@@ -110,8 +110,8 @@ export function Ribbon() {
             📂
           </button>
           <button
-            onClick={() => addTask(undefined, selectedId)}
-            title="New task"
+            onClick={newProject}
+            title="New project"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
             ➕
@@ -169,7 +169,7 @@ export function Ribbon() {
                 icon="📝"
                 label="Task"
                 onClick={() => addTask(undefined, selectedId)}
-                title="Insert new task"
+                title="Insert new task (Ctrl+Space)"
               />
               <div className="flex flex-col gap-0.5">
                 <RibbonButton
@@ -383,5 +383,8 @@ export function Ribbon() {
     </div>
   );
 }
+
+
+
 
 
