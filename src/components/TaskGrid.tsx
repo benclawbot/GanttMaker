@@ -84,7 +84,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
   const isEditable = (field: string) => ['name', 'duration', 'startDate', 'endDate', 'progress'].includes(field);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden border-r border-gray-300">
+    <div className="flex flex-col border-r border-gray-300">
       {/* Header */}
       <div className="flex bg-[#f5f5f5] border-b border-gray-300 sticky top-0 z-10 flex-shrink-0">
         {COLUMNS.map((col) => (
@@ -99,7 +99,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
       </div>
 
       {/* Rows */}
-      <div className="flex-1 overflow-hidden">
+      <div>
         {tasks.map((task, rowIdx) => {
           const isSelected = selection.has(task.id);
           const isCollapsed = collapsedIds.has(task.id);
@@ -267,5 +267,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
     </div>
   );
 }
+
+
 
 
