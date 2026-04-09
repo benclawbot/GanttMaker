@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import './styles/index.css';
 import { ProjectProvider } from './store/ProjectProvider';
 import { useProject } from './store/projectStore';
@@ -10,6 +10,19 @@ import { StatusBar } from './components/StatusBar';
 
 function AppContent() {
   const { view, project, openFile, saveFile, importReport, clearImportReport } = useProject();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const onToast = (evt: Event) => {
+      const custom = evt as CustomEvent<{ message?: string }>;
+      if (!custom.detail?.message) return;
+      setToastMessage(custom.detail.message);
+      window.setTimeout(() => setToastMessage(null), 3000);
+    };
+
+    window.addEventListener('ganttmaker:toast', onToast as EventListener);
+    return () => window.removeEventListener('ganttmaker:toast', onToast as EventListener);
+  }, []);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -63,6 +76,12 @@ function AppContent() {
           report={importReport}
           onClose={clearImportReport}
         />
+      )}
+
+      {toastMessage && (
+        <div className="fixed bottom-4 right-4 z-[60] bg-gray-900 text-white text-xs px-3 py-2 rounded shadow-lg border border-gray-700">
+          {toastMessage}
+        </div>
       )}
     </div>
   );
@@ -125,6 +144,10 @@ function ImportReportModal({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    window.dispatchEvent(new CustomEvent('ganttmaker:toast', {
+      detail: { message: 'Import report downloaded. Check your Downloads folder.' },
+    }));
   };
 
   return (
@@ -187,6 +210,10 @@ function App() {
 }
 
 export default App;
+
+
+
+
 
 
 

@@ -400,6 +400,10 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
           a.click();
           document.body.removeChild(a);
 
+          window.dispatchEvent(new CustomEvent('ganttmaker:toast', {
+            detail: { message: 'PNG exported. Check your Downloads folder.' },
+          }));
+
           URL.revokeObjectURL(svgUrl);
         };
         img.onerror = () => URL.revokeObjectURL(svgUrl);
@@ -778,6 +782,7 @@ function formatColHeader(date: Date, zoomLevel: string): string {
     default: return format(date, 'MM/dd');
   }
 }
+
 
 
 
