@@ -235,6 +235,17 @@ export function recalculateSummaryDates(tasks: Task[]): Task[] {
 // Context
 // ============================================================================
 
+export interface ImportCompatibilityReport {
+  fileName: string;
+  format: 'gan' | 'mpp' | 'xml';
+  tasks: number;
+  dependencies: number;
+  resources: number;
+  assignments: number;
+  warnings: string[];
+  compatibilityNote?: string;
+}
+
 export interface ProjectContextType {
   project: Project;
   
@@ -280,6 +291,10 @@ export interface ProjectContextType {
   openFile: () => void;
   saveFile: () => void;
   exportAs: (format: string) => void;
+
+  // Import report UI
+  importReport: ImportCompatibilityReport | null;
+  clearImportReport: () => void;
 }
 
 export const ProjectContext = createContext<ProjectContextType | null>(null);
@@ -289,4 +304,6 @@ export function useProject(): ProjectContextType {
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
+
+
 

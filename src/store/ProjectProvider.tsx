@@ -9,7 +9,7 @@ import {
   recalculateSummaryDates,
   getChildren,
 } from './projectStore';
-import type { ProjectContextType } from './projectStore';
+import type { ProjectContextType, ImportCompatibilityReport } from './projectStore';
 import { parseGanFile } from '../parsers/ganParser';
 import { parseMppFile, parseMspXmlFile } from '../parsers/mppParser';
 import { exportToGan, exportToCsv, exportToMspXml, downloadFile } from '../parsers/ganExporter';
@@ -22,6 +22,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selectedDependencyId, setSelectedDependencyId] = useState<string | null>(null);
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
+  const [importReport, setImportReport] = useState<ImportCompatibilityReport | null>(null);
 
   // ============================================================================
   // Selection
@@ -366,6 +367,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  const clearImportReport = useCallback(() => {
+    setImportReport(null);
+  }, []);
+
   // ============================================================================
   // File Operations
   // ============================================================================
@@ -396,20 +401,23 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
         loadProject(result.project);
 
-        const importedCounts = `Tasks: ${result.project.tasks.length}\nDependencies: ${result.project.dependencies.length}\nResources: ${result.project.resources.length}\nAssignments: ${result.project.assignments.length}`;
-
-        const warningBlock = result.warnings.length > 0
-          ? `\n\nWarnings (${result.warnings.length}):\n- ${result.warnings.slice(0, 5).join('\n- ')}`
-          : '';
-
-        const mspCompatibilityNote = importFormat === 'mpp' || importFormat === 'xml'
-          ? '\n\nCompatibility note:\nAdvanced MS Project fields (complex calendars, baselines, costs, timephased data, custom enterprise fields) may be reduced or omitted.'
-          : '';
+        const compatibilityNote = importFormat === 'mpp' || importFormat === 'xml'
+          ? 'Advanced MS Project fields (complex calendars, baselines, costs, timephased data, custom enterprise fields) may be reduced or omitted.'
+          : undefined;
 
         if (importFormat === 'mpp' || importFormat === 'xml' || result.warnings.length > 0) {
-          alert(
-            `Import report\n\nFile: ${file.name}\nFormat: ${importFormat.toUpperCase()}\n\n${importedCounts}${warningBlock}${mspCompatibilityNote}`,
-          );
+          setImportReport({
+            fileName: file.name,
+            format: importFormat,
+            tasks: result.project.tasks.length,
+            dependencies: result.project.dependencies.length,
+            resources: result.project.resources.length,
+            assignments: result.project.assignments.length,
+            warnings: result.warnings,
+            compatibilityNote,
+          });
+        } else {
+          setImportReport(null);
         }
 
         if (result.warnings.length > 0) {
@@ -485,6 +493,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     openFile,
     saveFile,
     exportAs,
+    importReport,
+    clearImportReport,
   }), [
     project, view, collapsedIds, toggleCollapse, collapseAll, expandAll, collapseSubtree, expandSubtree, selection, selectTask,
     clearSelection, selectedDependencyId, selectDependency,
@@ -492,7 +502,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     moveTaskUp, moveTaskDown, addDependency, deleteDependency,
     addResource, updateResource, deleteResource,
     loadProject, updateProjectName, updateSettings,
-    openFile, saveFile, exportAs,
+    openFile, saveFile, exportAs, importReport, clearImportReport,
   ]);
 
   return (
@@ -509,6 +519,13 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
+
+
+
+
+
 
 
 
