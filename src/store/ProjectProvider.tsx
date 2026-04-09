@@ -380,21 +380,40 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
       try {
         let result;
+        let importFormat: 'gan' | 'mpp' | 'xml';
         if (file.name.toLowerCase().endsWith('.gan')) {
           result = await parseGanFile(file);
+          importFormat = 'gan';
         } else if (file.name.toLowerCase().endsWith('.mpp')) {
           result = await parseMppFile(file);
+          importFormat = 'mpp';
         } else if (file.name.toLowerCase().endsWith('.xml')) {
           result = await parseMspXmlFile(file);
+          importFormat = 'xml';
         } else {
           throw new Error(`Unsupported file type: ${file.name}`);
         }
 
         loadProject(result.project);
 
+        const importedCounts = `Tasks: ${result.project.tasks.length}\nDependencies: ${result.project.dependencies.length}\nResources: ${result.project.resources.length}\nAssignments: ${result.project.assignments.length}`;
+
+        const warningBlock = result.warnings.length > 0
+          ? `\n\nWarnings (${result.warnings.length}):\n- ${result.warnings.slice(0, 5).join('\n- ')}`
+          : '';
+
+        const mspCompatibilityNote = importFormat === 'mpp' || importFormat === 'xml'
+          ? '\n\nCompatibility note:\nAdvanced MS Project fields (complex calendars, baselines, costs, timephased data, custom enterprise fields) may be reduced or omitted.'
+          : '';
+
+        if (importFormat === 'mpp' || importFormat === 'xml' || result.warnings.length > 0) {
+          alert(
+            `Import report\n\nFile: ${file.name}\nFormat: ${importFormat.toUpperCase()}\n\n${importedCounts}${warningBlock}${mspCompatibilityNote}`,
+          );
+        }
+
         if (result.warnings.length > 0) {
           console.warn('Import warnings:', result.warnings);
-          alert(`File imported with ${result.warnings.length} warning(s):\n\n${result.warnings.slice(0, 3).join('\n')}`);
         }
       } catch (err) {
         alert(`Failed to import file:\n${(err as Error).message}`);
@@ -490,6 +509,7 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
 
 
 
