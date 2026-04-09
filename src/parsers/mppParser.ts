@@ -384,5 +384,8 @@ function createEmptyProjectFromFilename(filename: string): Project {
  */
 export async function parseMspXmlFile(file: File): Promise<ImportResult> {
   const text = await file.text();
-  return parseMspdiXml(text, file.name);
+  const result = parseMspdiXml(text, file.name);
+  result.project.fileType = 'xml';
+  return result;
 }
+

@@ -24,7 +24,7 @@ export function StatusBar() {
           <span>New Project</span>
         ) : (
           <span>
-            {project.fileType === 'gan' ? '📄 .gan' : project.fileType === 'mpp' ? '📊 .mpp' : '📁 Project'}
+            {project.fileType === 'gan' ? '📄 .gan' : project.fileType === 'mpp' ? '📊 .mpp' : project.fileType === 'xml' ? '📄 .xml' : '📁 Project'}
           </span>
         )}
         {project.isDirty && <span className="text-amber-600 font-medium">● Modified</span>}
@@ -81,3 +81,4 @@ export function StatusBar() {
     </div>
   );
 }
+

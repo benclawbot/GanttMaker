@@ -366,8 +366,12 @@ export function Ribbon() {
         {activeTab === 'format' && (
           <>
             <RibbonGroup label="File">
-              <RibbonButton size="large" icon="📂" label="Open" onClick={openFile} />
+              <RibbonButton size="large" icon="📂" label="Open" onClick={openFile} title="Open .gan, .mpp, or .xml" />
               <RibbonButton size="large" icon="💾" label="Save .gan" onClick={saveFile} />
+              <div className="flex flex-col gap-0.5">
+                <RibbonButton icon="📄" label="Export XML" onClick={() => exportAs('xml')} title="Export MS Project XML (.xml)" />
+                <RibbonButton icon="🖼️" label="Export PNG" onClick={() => exportAs('png')} title="Export visible Gantt chart as PNG" />
+              </div>
               <div className="flex flex-col gap-0.5">
                 <RibbonButton icon="📤" label="Export CSV" onClick={() => exportAs('csv')} />
                 <RibbonButton icon="🖨️" label="Print" onClick={() => window.print()} />
@@ -379,4 +383,5 @@ export function Ribbon() {
     </div>
   );
 }
+
 

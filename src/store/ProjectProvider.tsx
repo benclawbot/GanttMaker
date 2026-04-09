@@ -12,7 +12,7 @@ import {
 import type { ProjectContextType } from './projectStore';
 import { parseGanFile } from '../parsers/ganParser';
 import { parseMppFile, parseMspXmlFile } from '../parsers/mppParser';
-import { exportToGan, exportToCsv, downloadFile } from '../parsers/ganExporter';
+import { exportToGan, exportToCsv, exportToMspXml, downloadFile } from '../parsers/ganExporter';
 import { addDays } from 'date-fns';
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
@@ -72,6 +72,36 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  const collapseAll = useCallback(() => {
+    setCollapsedIds(new Set(project.tasks.filter((t) => getChildren(project.tasks, t.id).length > 0).map((t) => t.id)));
+  }, [project.tasks]);
+
+  const expandAll = useCallback(() => {
+    setCollapsedIds(new Set());
+  }, []);
+
+  const collapseSubtree = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      const descendants = getDescendants(project.tasks, id);
+      descendants.forEach((d) => {
+        if (getChildren(project.tasks, d.id).length > 0) next.add(d.id);
+      });
+      if (getChildren(project.tasks, id).length > 0) next.add(id);
+      return next;
+    });
+  }, [project.tasks]);
+
+  const expandSubtree = useCallback((id: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev);
+      const descendants = getDescendants(project.tasks, id);
+      descendants.forEach((d) => next.delete(d.id));
+      next.delete(id);
+      return next;
+    });
+  }, [project.tasks]);
 
   // ============================================================================
   // Task Operations
@@ -382,12 +412,20 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, [project]);
 
   const exportAs = useCallback((format: string) => {
+    const safeName = project.name.replace(/[^a-z0-9\-_\s]/gi, '_');
+
     if (format === 'csv') {
       const csv = exportToCsv(project);
-      const filename = `${project.name.replace(/[^a-z0-9\-_\s]/gi, '_')}.csv`;
-      downloadFile(csv, filename, 'text/csv');
+      downloadFile(csv, `${safeName}.csv`, 'text/csv');
     } else if (format === 'gan') {
       saveFile();
+    } else if (format === 'xml') {
+      const xml = exportToMspXml(project);
+      downloadFile(xml, `${safeName}.xml`, 'application/xml');
+    } else if (format === 'png') {
+      window.dispatchEvent(new CustomEvent('ganttmaker:export-png', {
+        detail: { filename: `${safeName}-gantt.png` },
+      }));
     }
   }, [project, saveFile]);
 
@@ -401,6 +439,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setView,
     collapsedIds,
     toggleCollapse,
+    collapseAll,
+    expandAll,
+    collapseSubtree,
+    expandSubtree,
     selection,
     selectTask,
     clearSelection,
@@ -425,7 +467,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     saveFile,
     exportAs,
   }), [
-    project, view, collapsedIds, toggleCollapse, selection, selectTask,
+    project, view, collapsedIds, toggleCollapse, collapseAll, expandAll, collapseSubtree, expandSubtree, selection, selectTask,
     clearSelection, selectedDependencyId, selectDependency,
     addTask, updateTask, deleteSelectedTasks, indentTask, outdentTask,
     moveTaskUp, moveTaskDown, addDependency, deleteDependency,
@@ -448,3 +490,8 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
+
+
+

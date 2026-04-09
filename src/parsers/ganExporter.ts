@@ -114,6 +114,123 @@ export function exportToGan(project: Project): string {
   return xml;
 }
 
+function formatMspDate(date: Date): string {
+  return format(date, "yyyy-MM-dd'T'00:00:00");
+}
+
+function toMspDuration(days: number): string {
+  const safeDays = Math.max(0, days);
+  return `PT${safeDays * 8}H0M0S`;
+}
+
+function escapeXmlText(str: string): string {
+  return (str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+export function exportToMspXml(project: Project): string {
+  const tasks = [...project.tasks].sort((a, b) => a.order - b.order);
+  const resources = [...project.resources];
+  const assignments = [...project.assignments];
+
+  const idMap = new Map<string, number>();
+  tasks.forEach((task, idx) => idMap.set(task.id, idx + 1));
+
+  let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+  xml += `<Project xmlns="http://schemas.microsoft.com/project">\n`;
+  xml += `  <Name>${escapeXmlText(project.name)}</Name>\n`;
+  xml += `  <StartDate>${formatMspDate(project.startDate)}</StartDate>\n`;
+  if (project.author) xml += `  <Author>${escapeXmlText(project.author)}</Author>\n`;
+  if (project.company) xml += `  <Company>${escapeXmlText(project.company)}</Company>\n`;
+  if (project.currency) xml += `  <CurrencySymbol>${escapeXmlText(project.currency)}</CurrencySymbol>\n`;
+
+  xml += `  <Tasks>\n`;
+  xml += `    <Task>\n`;
+  xml += `      <UID>0</UID>\n`;
+  xml += `      <ID>0</ID>\n`;
+  xml += `      <Name>${escapeXmlText(project.name)}</Name>\n`;
+  xml += `      <Summary>1</Summary>\n`;
+  xml += `    </Task>\n`;
+
+  tasks.forEach((task, idx) => {
+    const uid = idMap.get(task.id)!;
+    const parentOutline = task.parentId ? tasks.find((t) => t.id === task.parentId)?.wbsCode : undefined;
+    const outline = task.wbsCode || (parentOutline ? `${parentOutline}.${idx + 1}` : `${idx + 1}`);
+    const priority = task.priority === 'Critical' ? 900 : task.priority === 'High' ? 700 : task.priority === 'Low' ? 300 : 500;
+
+    xml += `    <Task>\n`;
+    xml += `      <UID>${uid}</UID>\n`;
+    xml += `      <ID>${uid}</ID>\n`;
+    xml += `      <Name>${escapeXmlText(task.name)}</Name>\n`;
+    xml += `      <OutlineLevel>${task.level + 1}</OutlineLevel>\n`;
+    xml += `      <OutlineNumber>${outline}</OutlineNumber>\n`;
+    xml += `      <WBS>${outline}</WBS>\n`;
+    xml += `      <Start>${formatMspDate(task.startDate)}</Start>\n`;
+    xml += `      <Finish>${formatMspDate(task.endDate)}</Finish>\n`;
+    xml += `      <Duration>${toMspDuration(task.duration)}</Duration>\n`;
+    xml += `      <PercentComplete>${task.progress}</PercentComplete>\n`;
+    xml += `      <Priority>${priority}</Priority>\n`;
+    xml += `      <Summary>${task.type === 'summary' ? 1 : 0}</Summary>\n`;
+    xml += `      <Milestone>${task.isMilestone || task.type === 'milestone' ? 1 : 0}</Milestone>\n`;
+    xml += `      <Critical>${task.isCritical ? 1 : 0}</Critical>\n`;
+    if (task.notes) xml += `      <Notes>${escapeXmlText(task.notes)}</Notes>\n`;
+
+    const preds = project.dependencies.filter((d) => d.toTaskId === task.id);
+    preds.forEach((dep) => {
+      const predUid = idMap.get(dep.fromTaskId);
+      if (!predUid) return;
+      const depType = dep.type === DependencyType.FF ? 0 : dep.type === DependencyType.FS ? 1 : dep.type === DependencyType.SF ? 2 : 3;
+      const linkLag = Math.round(dep.lag * 8 * 60);
+      xml += `      <PredecessorLink>\n`;
+      xml += `        <PredecessorUID>${predUid}</PredecessorUID>\n`;
+      xml += `        <Type>${depType}</Type>\n`;
+      xml += `        <LinkLag>${linkLag}</LinkLag>\n`;
+      xml += `      </PredecessorLink>\n`;
+    });
+
+    xml += `    </Task>\n`;
+  });
+  xml += `  </Tasks>\n`;
+
+  xml += `  <Resources>\n`;
+  xml += `    <Resource><UID>0</UID><ID>0</ID><Name>Unassigned</Name></Resource>\n`;
+  resources.forEach((res, idx) => {
+    const uid = idx + 1;
+    xml += `    <Resource>\n`;
+    xml += `      <UID>${uid}</UID>\n`;
+    xml += `      <ID>${uid}</ID>\n`;
+    xml += `      <Name>${escapeXmlText(res.name)}</Name>\n`;
+    xml += `      <Type>${res.type === 'Material' ? 1 : res.type === 'Cost' ? 2 : 0}</Type>\n`;
+    if (res.email) xml += `      <EmailAddress>${escapeXmlText(res.email)}</EmailAddress>\n`;
+    xml += `      <MaxUnits>${Math.max(0, (res.maxUnits || 100) / 100)}</MaxUnits>\n`;
+    if (typeof res.standardRate === 'number') xml += `      <StandardRate>${res.standardRate}</StandardRate>\n`;
+    xml += `    </Resource>\n`;
+  });
+  xml += `  </Resources>\n`;
+
+  const resourceUidById = new Map<string, number>();
+  resources.forEach((r, idx) => resourceUidById.set(r.id, idx + 1));
+
+  xml += `  <Assignments>\n`;
+  assignments.forEach((a, idx) => {
+    const taskUid = idMap.get(a.taskId);
+    const resourceUid = resourceUidById.get(a.resourceId);
+    if (!taskUid || !resourceUid) return;
+    xml += `    <Assignment>\n`;
+    xml += `      <UID>${idx + 1}</UID>\n`;
+    xml += `      <TaskUID>${taskUid}</TaskUID>\n`;
+    xml += `      <ResourceUID>${resourceUid}</ResourceUID>\n`;
+    xml += `      <Units>${Math.max(0, (a.units || 100) / 100)}</Units>\n`;
+    xml += `    </Assignment>\n`;
+  });
+  xml += `  </Assignments>\n`;
+
+  xml += `</Project>\n`;
+  return xml;
+}
+
 export function downloadFile(content: string, filename: string, mimeType: string): void {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -153,3 +270,4 @@ export function exportToCsv(project: Project): string {
 
   return rows.join('\n');
 }
+

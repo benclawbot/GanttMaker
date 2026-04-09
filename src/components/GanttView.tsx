@@ -9,7 +9,8 @@ const DIVIDER_DEFAULT = 420;
 
 export function GanttView() {
   const { project, selection, selectTask, clearSelection, deleteSelectedTasks, addTask,
-    indentTask, outdentTask, selectedDependencyId, deleteDependency, collapsedIds } = useProject();
+    indentTask, outdentTask, selectedDependencyId, deleteDependency, collapsedIds,
+    collapseAll, expandAll, collapseSubtree, expandSubtree } = useProject();
 
   const [gridWidth, setGridWidth] = useState(DIVIDER_DEFAULT);
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
@@ -134,6 +135,26 @@ export function GanttView() {
           >
             + Task
           </button>
+          <button
+            onClick={() => {
+              if (selection.size === 1) collapseSubtree(Array.from(selection)[0]);
+              else collapseAll();
+            }}
+            className="text-[10px] text-gray-600 hover:text-gray-800 px-1.5 py-0.5 rounded hover:bg-gray-100"
+            title={selection.size === 1 ? 'Fold selected task hierarchy (all levels)' : 'Fold all task hierarchies'}
+          >
+            − Fold
+          </button>
+          <button
+            onClick={() => {
+              if (selection.size === 1) expandSubtree(Array.from(selection)[0]);
+              else expandAll();
+            }}
+            className="text-[10px] text-gray-600 hover:text-gray-800 px-1.5 py-0.5 rounded hover:bg-gray-100"
+            title={selection.size === 1 ? 'Unfold selected task hierarchy (all levels)' : 'Unfold all task hierarchies'}
+          >
+            + Unfold
+          </button>
           {selection.size > 0 && (
             <button
               onClick={deleteSelectedTasks}
@@ -184,4 +205,6 @@ export function GanttView() {
     </div>
   );
 }
+
+
 

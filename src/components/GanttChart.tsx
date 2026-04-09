@@ -364,6 +364,55 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
   today.setHours(0, 0, 0, 0);
   const todayX = dateToX(today, timeline.startDate, dayWidth);
 
+  useEffect(() => {
+    const onExportPng = async (evt: Event) => {
+      const customEvt = evt as CustomEvent<{ filename?: string }>;
+      const svg = svgRef.current;
+      if (!svg) return;
+
+      try {
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = svg.width.baseVal.value || svg.clientWidth || 1920;
+          canvas.height = svg.height.baseVal.value || svg.clientHeight || 1080;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            URL.revokeObjectURL(svgUrl);
+            return;
+          }
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0);
+
+          const pngUrl = canvas.toDataURL('image/png');
+          const a = document.createElement('a');
+          a.href = pngUrl;
+          a.download = customEvt.detail?.filename || 'gantt-chart.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          URL.revokeObjectURL(svgUrl);
+        };
+        img.onerror = () => URL.revokeObjectURL(svgUrl);
+        img.src = svgUrl;
+      } catch (error) {
+        console.error('PNG export failed:', error);
+      }
+    };
+
+    window.addEventListener('ganttmaker:export-png', onExportPng as EventListener);
+    return () => window.removeEventListener('ganttmaker:export-png', onExportPng as EventListener);
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -729,6 +778,7 @@ function formatColHeader(date: Date, zoomLevel: string): string {
     default: return format(date, 'MM/dd');
   }
 }
+
 
 
 

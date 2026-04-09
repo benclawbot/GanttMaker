@@ -243,6 +243,10 @@ export interface ProjectContextType {
   setView: (view: string) => void;
   collapsedIds: Set<string>;
   toggleCollapse: (id: string) => void;
+  collapseAll: () => void;
+  expandAll: () => void;
+  collapseSubtree: (id: string) => void;
+  expandSubtree: (id: string) => void;
   selection: Set<string>;
   selectTask: (id: string, multi: boolean, range: boolean) => void;
   clearSelection: () => void;
@@ -285,3 +289,4 @@ export function useProject(): ProjectContextType {
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
+

@@ -146,7 +146,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
                               toggleCollapse(task.id);
                             }}
                           >
-                            {isCollapsed ? '▶' : '▼'}
+                            {isCollapsed ? '+' : '−'}
                           </button>
                         ) : (
                           <span className="flex-shrink-0 w-4" />
@@ -267,6 +267,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
     </div>
   );
 }
+
 
 
 

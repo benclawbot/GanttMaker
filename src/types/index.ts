@@ -110,7 +110,7 @@ export interface Project {
   
   isDirty: boolean;
   filePath?: string;
-  fileType?: 'gan' | 'mpp' | 'new';
+  fileType?: 'gan' | 'mpp' | 'xml' | 'new';
 }
 
 export interface ProjectSettings {
@@ -173,3 +173,4 @@ export interface ImportResult {
   warnings: string[];
   errors: string[];
 }
+
