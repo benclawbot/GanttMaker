@@ -481,6 +481,32 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
                     <text x={x + 26} y={y + 4} fill="#374151" fontSize={11}>
                       {task.name}
                     </text>
+
+                    {/* Dependency drag handles for milestones */}
+                    {hoveredTaskId === task.id && (
+                      <>
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r={5}
+                          fill="white"
+                          stroke={barColor}
+                          strokeWidth={2}
+                          style={{ cursor: 'crosshair' }}
+                          onMouseDown={(e) => handleDepDragStart(e, task.id, 'start')}
+                        />
+                        <circle
+                          cx={x + 20}
+                          cy={y}
+                          r={5}
+                          fill="white"
+                          stroke={barColor}
+                          strokeWidth={2}
+                          style={{ cursor: 'crosshair' }}
+                          onMouseDown={(e) => handleDepDragStart(e, task.id, 'end')}
+                        />
+                      </>
+                    )}
                   </>
                 ) : (
                   <>
@@ -703,6 +729,7 @@ function formatColHeader(date: Date, zoomLevel: string): string {
     default: return format(date, 'MM/dd');
   }
 }
+
 
 
 
