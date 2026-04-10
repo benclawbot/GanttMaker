@@ -1,220 +1,248 @@
-import React, { useEffect, useState } from 'react';
+/**
+ * Gantt Chart Maker - Main Application
+ * Full integration with TaskContext and File Handler
+ */
+
+import React, { useCallback } from 'react';
 import './styles/index.css';
-import { ProjectProvider } from './store/ProjectProvider';
-import { useProject } from './store/projectStore';
-import { Ribbon } from './components/Ribbon';
-import { GanttView } from './components/GanttView';
-import { ResourceView } from './components/ResourceView';
-import { TaskPropertiesPanel } from './components/TaskPropertiesPanel';
-import { StatusBar } from './components/StatusBar';
+import { Toolbar } from './components/ui/Toolbar';
+import { GanttChart } from './modules/gantt-chart/components/GanttChart';
+import { TaskProvider, useTaskManager } from './context/TaskContext';
+import { parseGanString, exportGanFile } from './modules/file-handler';
+import type { Task, Link } from './modules/task-manager/types';
+import { DependencyType } from './modules/task-manager/types';
+
+// ============================================================================
+// Inner App Component (has access to TaskContext)
+// ============================================================================
 
 function AppContent() {
-  const { view, project, openFile, saveFile, importReport, clearImportReport } = useProject();
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { state, loadProject, canUndo, canRedo, undo, redo } = useTaskManager();
 
-  useEffect(() => {
-    const onToast = (evt: Event) => {
-      const custom = evt as CustomEvent<{ message?: string }>;
-      if (!custom.detail?.message) return;
-      setToastMessage(custom.detail.message);
-      window.setTimeout(() => setToastMessage(null), 3000);
-    };
-
-    window.addEventListener('ganttmaker:toast', onToast as EventListener);
-    return () => window.removeEventListener('ganttmaker:toast', onToast as EventListener);
-  }, []);
-
-  // Global keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey)) {
-        switch (e.key) {
-          case 's':
-            e.preventDefault();
-            saveFile();
-            break;
-          case 'o':
-            e.preventDefault();
-            openFile();
-            break;
-        }
-      }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [openFile, saveFile]);
-
-  return (
-    <div className="flex flex-col h-screen overflow-hidden bg-white font-sans">
-      {/* Ribbon / Toolbar */}
-      <Ribbon />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 overflow-hidden">
-        {view === 'gantt' || view === 'tasks' ? (
-          <>
-            {/* Left: Gantt View (split pane) */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <GanttView />
-            </div>
-
-            {/* Right: Properties Panel */}
-            <TaskPropertiesPanel />
-          </>
-        ) : view === 'resources' ? (
-          <div className="flex-1 overflow-hidden">
-            <ResourceView />
-          </div>
-        ) : null}
-      </div>
-
-      {/* Status Bar */}
-      <StatusBar />
-
-      {importReport && (
-        <ImportReportModal
-          report={importReport}
-          onClose={clearImportReport}
-        />
-      )}
-
-      {toastMessage && (
-        <div className="fixed bottom-4 right-4 z-[60] bg-gray-900 text-white text-xs px-3 py-2 rounded shadow-lg border border-gray-700">
-          {toastMessage}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ImportReportModal({
-  report,
-  onClose,
-}: {
-  report: {
-    fileName: string;
-    format: 'gan' | 'mpp' | 'xml';
-    tasks: number;
-    dependencies: number;
-    resources: number;
-    assignments: number;
-    warnings: string[];
-    compatibilityNote?: string;
-  };
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  const reportText = [
-    'Import report',
-    '',
-    `File: ${report.fileName}`,
-    `Format: ${report.format.toUpperCase()}`,
-    '',
-    `Tasks: ${report.tasks}`,
-    `Dependencies: ${report.dependencies}`,
-    `Resources: ${report.resources}`,
-    `Assignments: ${report.assignments}`,
-    '',
-    ...(report.warnings.length > 0 ? ['Warnings:', ...report.warnings.map((w) => `- ${w}`), ''] : []),
-    ...(report.compatibilityNote ? ['Compatibility note:', report.compatibilityNote] : []),
-  ].join('\n');
-
-  const copyReport = async () => {
-    try {
-      await navigator.clipboard.writeText(reportText);
-    } catch {
-      // no-op
+  // Menu-driven handlers
+  const handleNewProject = useCallback(() => {
+    if (state.isDirty) {
+      const ok = window.confirm('You have unsaved changes. Create a new project anyway?');
+      if (!ok) return;
     }
-  };
+    const defaultTasks: Task[] = [
+      { id: '1', text: 'Project Planning', startDate: new Date(), endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), type: 'project' },
+      { id: '2', text: 'Define requirements', startDate: new Date(), endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), progress: 100 },
+      { id: '3', text: 'Design architecture', startDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000), progress: 75 },
+      { id: '4', text: 'Development', startDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000), endDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000), progress: 30 },
+    ];
+    const defaultLinks: Link[] = [
+      { id: '1', source: '2', target: '3', type: DependencyType.FS },
+      { id: '2', source: '3', target: '4', type: DependencyType.FS },
+    ];
+    loadProject({ name: 'New Project', tasks: defaultTasks, links: defaultLinks });
+  }, [state.isDirty, loadProject]);
 
-  const downloadReport = () => {
-    const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${report.fileName.replace(/\.[^.]+$/, '')}-import-report.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleOpenFile = useCallback(async () => {
+    if (state.isDirty) {
+      const ok = window.confirm('You have unsaved changes. Open another file anyway?');
+      if (!ok) return;
+    }
+    try {
+      const result = await window.electronAPI?.openFileDialog();
+      if (!result) return;
 
-    window.dispatchEvent(new CustomEvent('ganttmaker:toast', {
-      detail: { message: 'Import report downloaded. Check your Downloads folder.' },
-    }));
-  };
+      if (result.type === 'gan') {
+        const projectData = await parseGanString(result.content);
+        loadProject({
+          name: projectData.name,
+          tasks: projectData.tasks.map((t) => ({
+            id: String(t.id),
+            text: t.text,
+            description: t.description,
+            startDate: t.start,
+            endDate: t.end,
+            duration: t.duration,
+            progress: t.progress,
+            type: t.type as 'task' | 'project' | 'milestone',
+            parentId: t.parentId ? String(t.parentId) : undefined,
+            notes: t.notes,
+            customFields: t.customFields,
+          })),
+          links: projectData.links.map((l) => ({
+            id: String(l.id),
+            source: String(l.source),
+            target: String(l.target),
+            type: l.type as DependencyType,
+            lag: l.lag,
+          })),
+        });
+        alert(`Successfully loaded: ${result.filePath}`);
+      } else {
+        // .mpp — already parsed by Electron main process
+        const data = await window.electronAPI?.readMpp(result.filePath);
+        if (!data) return;
+        // Convert tsmpp format to GanttMaker internal format
+        const pd = data as { name: string; tasks: any[]; finishDate?: string };
+        loadProject({
+          name: pd.name,
+          tasks: pd.tasks.map((t: any) => ({
+            id: String(t.id),
+            text: t.name,
+            description: undefined,
+            startDate: new Date(t.startDate),
+            endDate: new Date(t.finishDate),
+            duration: (t.durationDays ?? 1) * 24 * 60 * 60 * 1000,
+            progress: 0,
+            type: t.isMilestone ? 'milestone' : t.isSummary ? 'project' : 'task',
+            parentId: t.parentId != null ? String(t.parentId) : undefined,
+            notes: undefined,
+            customFields: undefined,
+          })),
+          links: pd.tasks.flatMap((t: any) =>
+            (t.predecessors ?? []).map((p: any, i: number) => ({
+              id: `${t.id}-${p.taskId}-${i}`,
+              source: String(p.taskId),
+              target: String(t.id),
+              type: (p.type ?? 'FS') as DependencyType,
+              lag: 0,
+            }))
+          ),
+        });
+        alert(`Successfully loaded: ${result.filePath}`);
+      }
+    } catch (error) {
+      console.error('Failed to open file:', error);
+      alert('Failed to open file: ' + (error as Error).message);
+    }
+  }, [state.isDirty, loadProject]);
+
+  const handleSaveFile = useCallback(async (saveAs = false) => {
+    const projectData = {
+      id: state.id,
+      name: state.name,
+      tasks: state.tasks.map((t) => ({
+        id: t.id,
+        text: t.text,
+        description: t.description,
+        start: t.startDate || new Date(),
+        end: t.endDate || new Date(),
+        duration: t.duration,
+        progress: t.progress,
+        type: t.type,
+        parentId: t.parentId,
+        notes: t.notes,
+        customFields: t.customFields,
+      })),
+      links: state.links.map((l) => ({
+        id: l.id,
+        source: l.source,
+        target: l.target,
+        type: l.type,
+        lag: l.lag,
+      })),
+      metadata: { version: '3.3', locale: 'en' },
+    };
+    const filename = `${state.name.replace(/[^a-z0-9]/gi, '_')}.gan`;
+    const blob = exportGanFile(projectData as any);
+    const text = await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.readAsText(blob);
+    });
+    try {
+      await window.electronAPI?.saveFileDialog(text, 'gan', filename);
+    } catch (error) {
+      console.error('Failed to save file:', error);
+      alert('Failed to save file: ' + (error as Error).message);
+    }
+  }, [state]);
+
+  // Wire menu accelerators (Ctrl+N/O/S etc.) and file-association open
+  React.useEffect(() => {
+    const cleanups: (() => void)[] = [];
+    if (window.electronAPI) {
+      cleanups.push(window.electronAPI.onMenuNew(handleNewProject));
+      cleanups.push(window.electronAPI.onMenuOpen(handleOpenFile));
+      cleanups.push(window.electronAPI.onMenuSave(() => handleSaveFile(false)));
+      cleanups.push(window.electronAPI.onMenuSaveAs(() => handleSaveFile(true)));
+      cleanups.push(window.electronAPI.onMenuUndo(undo));
+      cleanups.push(window.electronAPI.onMenuRedo(redo));
+      cleanups.push(
+        window.electronAPI.onFileOpened(async (filePath: string) => {
+          if (state.isDirty) {
+            const ok = window.confirm('You have unsaved changes. Open another file anyway?');
+            if (!ok) return;
+          }
+          try {
+            const ext = filePath.split('.').pop()?.toLowerCase();
+            if (ext === 'gan') {
+              const xml = await window.electronAPI!.readGan(filePath);
+              const pd = await parseGanString(xml);
+              loadProject({ name: pd.name, tasks: pd.tasks as any, links: pd.links as any });
+            } else if (ext === 'mpp') {
+              const data = await window.electronAPI!.readMpp(filePath);
+              const pd = data as { name: string; tasks: any[] };
+              loadProject({
+                name: pd.name,
+                tasks: pd.tasks.map((t: any) => ({ id: String(t.id), text: t.name, startDate: new Date(t.startDate), endDate: new Date(t.finishDate), type: t.isMilestone ? 'milestone' : 'task' })),
+                links: [],
+              });
+            }
+          } catch (error) {
+            alert('Failed to open file: ' + (error as Error).message);
+          }
+        })
+      );
+    }
+    return () => cleanups.forEach((fn) => fn());
+  }, [handleNewProject, handleOpenFile, handleSaveFile, undo, redo, state.isDirty, loadProject]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="w-full max-w-xl bg-white rounded-lg shadow-xl border border-gray-200" onClick={(e) => e.stopPropagation()}>
-        <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="font-semibold text-sm">Import Compatibility Report</div>
-            {report.warnings.length === 0 && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 border border-green-200">
-                ✓ No warnings
-              </span>
-            )}
-          </div>
-          <button className="text-gray-500 hover:text-gray-700 text-sm" onClick={onClose}>✕</button>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      <header className="bg-white shadow-sm flex-shrink-0">
+        <Toolbar
+          onNewProject={handleNewProject}
+          onOpenFile={handleOpenFile}
+          onSaveFile={() => handleSaveFile(false)}
+          canSave={state.tasks.length > 0}
+          projectName={state.name}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onUndo={undo}
+          onRedo={redo}
+        />
+      </header>
+      <main className="flex-1 p-4 min-h-0">
+        <div className="bg-white rounded-lg shadow h-full overflow-hidden">
+          <GanttChart />
         </div>
-
-        <div className="p-4 text-sm text-gray-700 space-y-2 max-h-[60vh] overflow-auto">
-          <div><span className="text-gray-500">File:</span> {report.fileName}</div>
-          <div><span className="text-gray-500">Format:</span> {report.format.toUpperCase()}</div>
-          <div className="grid grid-cols-2 gap-2 pt-1">
-            <div>Tasks: <span className="font-medium">{report.tasks}</span></div>
-            <div>Dependencies: <span className="font-medium">{report.dependencies}</span></div>
-            <div>Resources: <span className="font-medium">{report.resources}</span></div>
-            <div>Assignments: <span className="font-medium">{report.assignments}</span></div>
-          </div>
-
-          {report.warnings.length > 0 && (
-            <div className="pt-2">
-              <div className="font-medium text-amber-700">Warnings ({report.warnings.length})</div>
-              <ul className="list-disc pl-5 mt-1 space-y-1 text-amber-800">
-                {report.warnings.slice(0, 10).map((w, i) => <li key={i}>{w}</li>)}
-              </ul>
-            </div>
-          )}
-
-          {report.compatibilityNote && (
-            <div className="pt-2 text-gray-600">
-              <span className="font-medium">Compatibility note:</span> {report.compatibilityNote}
-            </div>
-          )}
-        </div>
-
-        <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-end gap-2">
-          <button onClick={copyReport} className="px-3 py-1.5 text-xs rounded border border-gray-300 hover:bg-gray-50">Copy report</button>
-          <button onClick={downloadReport} className="px-3 py-1.5 text-xs rounded border border-gray-300 hover:bg-gray-50">Download .txt</button>
-          <button onClick={onClose} className="px-3 py-1.5 text-xs rounded bg-blue-600 text-white hover:bg-blue-700">Close</button>
-        </div>
-      </div>
+      </main>
     </div>
   );
 }
+
+// ============================================================================
+// Main App with Provider
+// ============================================================================
 
 function App() {
+  const defaultTasks: Task[] = [
+    { id: '1', text: 'Project Planning', startDate: new Date(), endDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000), type: 'project' },
+    { id: '2', text: 'Define requirements', startDate: new Date(), endDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), progress: 100 },
+    { id: '3', text: 'Design architecture', startDate: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000), endDate: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000), progress: 75 },
+    { id: '4', text: 'Development', startDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000), endDate: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000), progress: 30 },
+  ];
+  
+  const defaultLinks: Link[] = [
+    { id: '1', source: '2', target: '3', type: DependencyType.FS },
+    { id: '2', source: '3', target: '4', type: DependencyType.FS },
+  ];
+  
   return (
-    <ProjectProvider>
+    <TaskProvider
+      initialTasks={defaultTasks}
+      initialLinks={defaultLinks}
+      initialName="My Gantt Project"
+    >
       <AppContent />
-    </ProjectProvider>
+    </TaskProvider>
   );
 }
 
 export default App;
-
-
-
-
-
-
-
-

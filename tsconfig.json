@@ -41,7 +41,8 @@
     }
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+    "electron/**/*.ts"
   ],
   "exclude": [
     "node_modules",

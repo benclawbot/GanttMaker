@@ -284,6 +284,26 @@ function parseGanDate(dateStr: string): Date {
 }
 
 /**
+ * Parse a .gan XML string into ProjectData structure
+ */
+export async function parseGanString(xmlString: string): Promise<ProjectData> {
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+
+  const parseError = xmlDoc.querySelector('parsererror');
+  if (parseError) {
+    throw new Error(`Failed to parse .gan file: ${parseError.textContent}`);
+  }
+
+  const projectElement = xmlDoc.querySelector('project');
+  if (!projectElement) {
+    throw new Error('Invalid .gan file: missing <project> root element');
+  }
+
+  return parseProjectElement(projectElement);
+}
+
+/**
  * Validate a .gan file without fully parsing it
  */
 export async function validateGanFile(file: File): Promise<{ isValid: boolean; errors: string[] }> {
