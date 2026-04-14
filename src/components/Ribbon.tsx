@@ -96,7 +96,16 @@ export function Ribbon() {
         {/* Quick Access Toolbar */}
         <div className="flex items-center gap-1 ml-2">
           <button
-            onClick={newProject}
+            onClick={() => {
+              if (project.isDirty) {
+                const shouldSave = window.confirm(
+                  `"${project.name}" has unsaved changes.\n\nClick OK to save and create new project.\nClick Cancel to cancel.`
+                );
+                if (shouldSave) saveFile();
+                else return;
+              }
+              newProject();
+            }}
             title="New project"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
@@ -386,6 +395,8 @@ export function Ribbon() {
     </div>
   );
 }
+
+
 
 
 

@@ -325,7 +325,8 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const newProject = useCallback(() => {
-    setProject({ ...createDefaultProject(), isDirty: false });
+    const newProj = { ...createDefaultProject(), isDirty: false };
+    setProject(newProj);
     setCollapsedIds(new Set());
     setSelection(new Set());
     setSelectedDependencyId(null);
@@ -455,5 +456,7 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
 
 
