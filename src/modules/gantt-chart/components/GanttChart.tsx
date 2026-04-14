@@ -705,6 +705,10 @@ export function GanttChart() {
     );
   }, [isDragging, dragState, hoveredHandle, tasks, getBarPixels, calculatePath]);
   
+  // Calculate unified SVG height for scroll sync between task list and chart
+  const svgHeight = tasks.length * ROW_HEIGHT;
+  const svgWidth = timelineWidth + TIMELINE_PADDING * 2;
+  
   return (
     <div className="p-4 h-full flex flex-col" onClick={() => setSelectedLinkId(null)}>
       <h2 className="text-xl font-bold mb-4">Gantt Chart</h2>
@@ -732,61 +736,83 @@ export function GanttChart() {
       </div>
       
       <div className="flex-1 overflow-hidden min-h-0 relative" ref={chartRef} style={{ height: 'calc(100% - 120px)' }}>
+        {/* Unified scroll: task list and chart share same content height */}
         <div className="flex absolute inset-0">
-          <div className="w-56 flex-shrink-0 overflow-y-auto h-full" ref={taskListRef}>
-            {tasks.map((task) => {
-              const isSelected = selectedTaskId === task.id || selectedTaskIds.has(task.id);
-              const hasKids = hasChildren(task.id);
-              const isCollapsed = collapsedTasks.has(task.id);
-              
-              return (
-                <div
-                  key={task.id}
-                  className={`h-12 flex items-center px-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                    isSelected ? 'bg-blue-50' : ''
-                  }`}
-                  onClick={(e) => handleTaskClick(task.id, e)}
-                >
-                  <div style={{ width: task.level * 20 }} />
-                  {hasKids ? (
-                    <button
-                      onClick={(e) => toggleCollapse(task.id, e)}
-                      className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded flex-shrink-0"
-                    >
-                      <svg
-                        className={`w-3 h-3 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+          {/* Task list column - scrolls with chart via synced heights */}
+          <div 
+            className="w-56 flex-shrink-0 overflow-y-auto" 
+            ref={taskListRef}
+            onScroll={(e) => {
+              if (timelineRef.current) {
+                timelineRef.current.scrollTop = e.currentTarget.scrollTop;
+              }
+            }}
+          >
+            <div style={{ height: svgHeight }}>
+              {tasks.map((task) => {
+                const isSelected = selectedTaskId === task.id || selectedTaskIds.has(task.id);
+                const hasKids = hasChildren(task.id);
+                const isCollapsed = collapsedTasks.has(task.id);
+                
+                return (
+                  <div
+                    key={task.id}
+                    className={`h-12 flex items-center px-2 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                      isSelected ? 'bg-blue-50' : ''
+                    }`}
+                    onClick={(e) => handleTaskClick(task.id, e)}
+                  >
+                    <div style={{ width: task.level * 20 }} />
+                    {hasKids ? (
+                      <button
+                        onClick={(e) => toggleCollapse(task.id, e)}
+                        className="w-5 h-5 flex items-center justify-center hover:bg-gray-200 rounded flex-shrink-0"
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg
+                          className={`w-3 h-3 transition-transform ${isCollapsed ? '' : 'rotate-90'}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <div className="w-5 flex-shrink-0" />
+                    )}
+                    {task.type === 'project' && (
+                      <svg className="w-4 h-4 text-purple-500 flex-shrink-0 ml-1" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                       </svg>
-                    </button>
-                  ) : (
-                    <div className="w-5 flex-shrink-0" />
-                  )}
-                  {task.type === 'project' && (
-                    <svg className="w-4 h-4 text-purple-500 flex-shrink-0 ml-1" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
-                    </svg>
-                  )}
-                  {task.type === 'milestone' && (
-                    <div className="w-3 h-3 bg-yellow-500 rounded-sm flex-shrink-0 ml-1" />
-                  )}
-                  {task.type !== 'project' && task.type !== 'milestone' && (
-                    <div className="w-3 h-3 border border-gray-300 rounded-sm flex-shrink-0 ml-1" />
-                  )}
-                  <span className="truncate text-sm ml-1">{task.text}</span>
-                </div>
-              );
-            })}
+                    )}
+                    {task.type === 'milestone' && (
+                      <div className="w-3 h-3 bg-yellow-500 rounded-sm flex-shrink-0 ml-1" />
+                    )}
+                    {task.type !== 'project' && task.type !== 'milestone' && (
+                      <div className="w-3 h-3 border border-gray-300 rounded-sm flex-shrink-0 ml-1" />
+                    )}
+                    <span className="truncate text-sm ml-1">{task.text}</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           
-          <div className="flex-1 relative overflow-y-auto h-full" ref={timelineRef}>
+          {/* Chart body - scrolls with task list via synced heights */}
+          <div 
+            className="flex-1 relative overflow-auto"
+            ref={timelineRef}
+            onScroll={(e) => {
+              if (taskListRef.current) {
+                taskListRef.current.scrollTop = e.currentTarget.scrollTop;
+              }
+            }}
+          >
+            {/* SVG overlay for dependency lines - scrolls with content */}
             <svg
-              className="absolute top-0 left-0 z-10"
-              width={timelineWidth + TIMELINE_PADDING * 2}
-              height={tasks.length * ROW_HEIGHT}
+              className="absolute top-0 left-0 z-10 pointer-events-none"
+              width={svgWidth}
+              height={svgHeight}
               style={{ marginLeft: TIMELINE_PADDING }}
               onClick={handleLinksContainerClick}
             >
@@ -795,16 +821,19 @@ export function GanttChart() {
                   x1={todayLineX}
                   x2={todayLineX}
                   y1={0}
-                  y2={tasks.length * ROW_HEIGHT}
+                  y2={svgHeight}
                   stroke="#ef4444"
                   strokeWidth={2}
                   style={{ pointerEvents: 'none' }}
                 />
               )}
-              {dependencyLines}
+              <g onClick={handleLinksContainerClick}>
+                {dependencyLines}
+              </g>
               {dragPreview}
             </svg>
             
+            {/* Task rows with bars */}
             {tasks.map((task, index) => {
               const isSelected = selectedTaskId === task.id || selectedTaskIds.has(task.id);
               const barStyle = getBarStyle(task);
@@ -870,16 +899,17 @@ export function GanttChart() {
                         >
                           <div className="h-full rounded bg-white/30" style={{ width: `${task.progress || 0}%` }} />
                         </div>
-                        {/* Progress percentage label */}
-                        <div
-                          className="absolute top-1 text-xs font-semibold text-white pointer-events-none"
-                          style={{
-                            left: `calc(${barStyle.left} + ${barStyle.width} + 6px)`,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {task.progress}%
-                        </div>
+                        {/* Progress label - only show if bar is wide enough */}
+                        {parseFloat(barStyle.width) > 8 && (
+                          <div
+                            className="absolute top-1 text-xs font-semibold text-white pointer-events-none whitespace-nowrap"
+                            style={{
+                              left: `calc(${barStyle.left} + ${barStyle.width} + 4px)`,
+                            }}
+                          >
+                            {task.progress}%
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -973,3 +1003,5 @@ function TaskDetails({ taskId, links = [] }: TaskDetailsProps) {
 }
 
 export default GanttChart;
+
+
