@@ -2,17 +2,13 @@
   "name": "ganttmaker",
   "version": "1.0.0",
   "description": "Gantt chart maker with .gan and .mpp support",
-  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "electron:dev": "vite",
-    "electron:build": "vite build && electron-builder --config electron-builder.json"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC",
   "type": "module",
   "dependencies": {
@@ -27,14 +23,9 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
-    "electron": "^41.2.0",
-    "electron-builder": "^26.0.0",
-    "esbuild": "^0.27.7",
     "postcss": "^8.5.8",
     "typescript": "^5.9.3",
     "vite": "^8.0.1",
-    "vite-plugin-electron": "^0.29.1",
-    "vite-plugin-electron-renderer": "^0.14.0",
     "vite-tsconfig-paths": "^6.1.1"
   }
 }
