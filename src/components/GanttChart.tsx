@@ -114,6 +114,8 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
     startX: number;
     startDate: Date;
     endDate: Date;
+    taskStartDate: Date;
+    taskEndDate: Date;
   } | null>(null);
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [depDragFrom, setDepDragFrom] = useState<{ taskId: string; side: 'start' | 'end'; x: number; y: number } | null>(null);
@@ -172,6 +174,8 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
       startX: e.clientX,
       startDate: new Date(task.startDate),
       endDate: new Date(task.endDate),
+      taskStartDate: new Date(task.startDate),
+      taskEndDate: new Date(task.endDate),
     });
   }, [visibleTasks]);
 
@@ -201,27 +205,24 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
       const dx = e.clientX - dragging.startX;
       const daysDelta = Math.round(dx / dayWidth);
 
-      const task = visibleTasks.find((t) => t.id === dragging.taskId);
-      if (!task) return;
-
       if (dragging.type === 'bar') {
         const newStart = addDays(dragging.startDate, daysDelta);
         const newEnd = addDays(dragging.endDate, daysDelta);
         updateTask(dragging.taskId, { startDate: newStart, endDate: newEnd });
       } else if (dragging.type === 'resize-right') {
         const newEnd = addDays(dragging.endDate, daysDelta);
-        if (differenceInCalendarDays(newEnd, task.startDate) >= 0) {
+        if (differenceInCalendarDays(newEnd, dragging.taskStartDate) >= 0) {
           updateTask(dragging.taskId, {
             endDate: newEnd,
-            duration: Math.max(0, differenceInCalendarDays(newEnd, task.startDate)),
+            duration: Math.max(0, differenceInCalendarDays(newEnd, dragging.taskStartDate)),
           });
         }
       } else if (dragging.type === 'resize-left') {
         const newStart = addDays(dragging.startDate, daysDelta);
-        if (differenceInCalendarDays(task.endDate, newStart) >= 0) {
+        if (differenceInCalendarDays(dragging.taskEndDate, newStart) >= 0) {
           updateTask(dragging.taskId, {
             startDate: newStart,
-            duration: Math.max(0, differenceInCalendarDays(task.endDate, newStart)),
+            duration: Math.max(0, differenceInCalendarDays(dragging.taskEndDate, newStart)),
           });
         }
       }
@@ -729,6 +730,10 @@ function formatColHeader(date: Date, zoomLevel: string): string {
     default: return format(date, 'MM/dd');
   }
 }
+
+
+
+
 
 
 
