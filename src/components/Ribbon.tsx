@@ -125,22 +125,19 @@ export function Ribbon() {
           >
             💾
           </button>
-          <button
-            onClick={() => addTask(undefined, selectedId)}
-            title="New task"
-            className="p-1 hover:bg-white/20 rounded text-white/90"
-          >
-            ➕
-          </button>
         </div>
 
         <div className="flex-1" />
 
-        {/* Project Name */}
-        <div className="text-sm font-medium opacity-90 truncate max-w-xs">
-          {project.name}
-          {project.isDirty && <span className="text-yellow-300 ml-1">●</span>}
-        </div>
+        {/* Project Name - editable */}
+        <input
+          type="text"
+          value={project.name}
+          onChange={(e) => updateProjectName(e.target.value)}
+          className="bg-transparent text-sm font-medium opacity-90 truncate max-w-xs px-1 rounded hover:bg-white/10 focus:bg-white/20 focus:outline-none"
+          title="Click to edit project name (becomes filename when saving)"
+        />
+        {project.isDirty && <span className="text-yellow-300 ml-1">●</span>}
       </div>
 
       {/* Tab Bar */}
@@ -395,6 +392,8 @@ export function Ribbon() {
     </div>
   );
 }
+
+
 
 
 

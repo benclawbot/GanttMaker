@@ -368,7 +368,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
           throw new Error(`Unsupported file type: ${file.name}`);
         }
 
-        loadProject(result.project);
+        loadProject({ ...result.project, name: file.name.replace(/\.[^.]+$/, '') });
 
         if (result.warnings.length > 0) {
           console.warn('Import warnings:', result.warnings);
@@ -456,6 +456,7 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
 
 
 
