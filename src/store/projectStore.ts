@@ -276,6 +276,7 @@ export interface ProjectContextType {
   // File operations
   openFile: () => void;
   saveFile: () => void;
+  saveAs: () => void;
   exportAs: (format: string) => void;
 }
 
@@ -286,4 +287,5 @@ export function useProject(): ProjectContextType {
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
+
 

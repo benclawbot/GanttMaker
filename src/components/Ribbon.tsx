@@ -74,7 +74,7 @@ export function Ribbon() {
   const {
     project, view, setView, selection, deleteSelectedTasks,
     addTask, indentTask, outdentTask, moveTaskUp, moveTaskDown,
-    openFile, saveFile, exportAs, updateSettings, newProject,
+    openFile, saveFile, saveAs, exportAs, updateSettings, newProject,
   } = useProject();
 
   const selectedId = selection.size === 1 ? Array.from(selection)[0] : undefined;
@@ -96,16 +96,7 @@ export function Ribbon() {
         {/* Quick Access Toolbar */}
         <div className="flex items-center gap-1 ml-2">
           <button
-            onClick={() => {
-              if (project.isDirty) {
-                const shouldSave = window.confirm(
-                  `"${project.name}" has unsaved changes.\n\nClick OK to save and create new project.\nClick Cancel to cancel.`
-                );
-                if (shouldSave) saveFile();
-                else return;
-              }
-              newProject();
-            }}
+            onClick={() => newProject()}
             title="New project"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
@@ -119,8 +110,8 @@ export function Ribbon() {
             📂
           </button>
           <button
-            onClick={saveFile}
-            title="Save (Ctrl+S)"
+            onClick={saveAs}
+            title="Save As... (Ctrl+Shift+S)"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
             💾
@@ -392,6 +383,9 @@ export function Ribbon() {
     </div>
   );
 }
+
+
+
 
 
 

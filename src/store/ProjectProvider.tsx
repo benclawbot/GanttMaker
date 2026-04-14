@@ -382,6 +382,17 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     input.click();
   }, [loadProject]);
 
+  const saveAs = useCallback(() => {
+    const suggestedName = project.name.replace(/[^a-z0-9\-_\s]/gi, '_') || 'Untitled';
+    const filename = window.prompt('Enter filename:', suggestedName);
+    if (!filename) return; // User cancelled
+    const finalName = filename.endsWith('.gan') ? filename : `${filename}.gan`;
+    const xml = exportToGan(project);
+    downloadFile(xml, finalName, 'application/xml');
+    // Update project name to match the saved filename
+    setProject((prev) => ({ ...prev, name: filename.replace(/\.gan$/, ''), isDirty: false }));
+  }, [project]);
+
   const saveFile = useCallback(() => {
     const xml = exportToGan(project);
     const filename = `${project.name.replace(/[^a-z0-9\-_\s]/gi, '_')}.gan`;
@@ -439,7 +450,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     moveTaskUp, moveTaskDown, addDependency, deleteDependency,
     addResource, updateResource, deleteResource,
     loadProject, newProject, updateProjectName, updateSettings,
-    openFile, saveFile, exportAs,
+    openFile, saveFile, saveAs, exportAs,
   ]);
 
   return (
@@ -456,6 +467,8 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
 
 
 
