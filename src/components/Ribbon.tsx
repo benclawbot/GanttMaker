@@ -96,15 +96,15 @@ export function Ribbon() {
         {/* Quick Access Toolbar */}
         <div className="flex items-center gap-1 ml-2">
           <button
-            onClick={() => newProject()}
-            title="New project"
+            onClick={newProject}
+            title="New project (Ctrl+N)"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
             📄
           </button>
           <button
             onClick={openFile}
-            title="Open file"
+            title="Open file (Ctrl+O)"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
             📂
@@ -383,6 +383,7 @@ export function Ribbon() {
     </div>
   );
 }
+
 
 
 
