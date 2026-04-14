@@ -145,18 +145,23 @@ function parseGanTasks(
     const startStr = taskEl.getAttribute('start') || '';
     const durStr = taskEl.getAttribute('duration') || '1';
     const completionStr = taskEl.getAttribute('complete') || '0';
-    const isMilestone = taskEl.getAttribute('meeting') === 'true';
+    const meetingAttr = taskEl.getAttribute('meeting');
     const color = taskEl.getAttribute('color') || undefined;
     const notes = taskEl.querySelector('notes')?.textContent || undefined;
+    const expandStr = taskEl.getAttribute('expand');
 
     const startDate = parseGanDate(startStr) || new Date();
     const duration = parseInt(durStr) || 1;
+    // GAN milestone is indicated by meeting="true" OR duration=0
+    const isMilestone = meetingAttr === 'true' || (meetingAttr !== 'false' && duration === 0);
     const endDate = addDays(startDate, isMilestone ? 0 : duration);
     const progress = parseInt(completionStr) || 0;
 
     // Check if this task has sub-tasks
     const childTaskEls = Array.from(taskEl.children).filter((el) => el.tagName === 'task');
     const type = childTaskEls.length > 0 ? TaskType.Summary : isMilestone ? TaskType.Milestone : TaskType.Task;
+    // GAN expand="false" means collapsed; default is expanded (true)
+    const isCollapsed = expandStr === 'false';
 
     const task: Task = {
       id: String(id),
@@ -172,7 +177,7 @@ function parseGanTasks(
       priority: 'Normal',
       isMilestone,
       isCritical: false,
-      isCollapsed: false,
+      isCollapsed,
       resources: [],
       color,
       notes,
@@ -189,10 +194,16 @@ function parseGanTasks(
 
 function parseGanDate(dateStr: string): Date | null {
   if (!dateStr) return null;
-  // GanttProject uses YYYY-MM-DD format
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  // GanttProject uses YYYY-MM-DD format - parse as UTC to avoid local timezone shifts
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (match) {
-    return new Date(parseInt(match[1]), parseInt(match[2]) - 1, parseInt(match[3]));
+    // Use UTC to avoid timezone shifting the date
+    const utcDate = Date.UTC(
+      parseInt(match[1]),
+      parseInt(match[2]) - 1,
+      parseInt(match[3])
+    );
+    return new Date(utcDate);
   }
   return null;
 }
@@ -207,3 +218,6 @@ function ganDepTypeToDep(type: string): DependencyType {
     default: return DependencyType.FS;
   }
 }
+
+
+
