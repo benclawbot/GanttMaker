@@ -74,7 +74,7 @@ export function Ribbon() {
   const {
     project, view, setView, selection, deleteSelectedTasks,
     addTask, indentTask, outdentTask, moveTaskUp, moveTaskDown,
-    openFile, saveFile, exportAs, updateSettings,
+    openFile, saveFile, exportAs, updateSettings, newProject,
   } = useProject();
 
   const selectedId = selection.size === 1 ? Array.from(selection)[0] : undefined;
@@ -96,11 +96,11 @@ export function Ribbon() {
         {/* Quick Access Toolbar */}
         <div className="flex items-center gap-1 ml-2">
           <button
-            onClick={saveFile}
-            title="Save (Ctrl+S)"
+            onClick={newProject}
+            title="New project"
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
-            💾
+            📄
           </button>
           <button
             onClick={openFile}
@@ -108,6 +108,13 @@ export function Ribbon() {
             className="p-1 hover:bg-white/20 rounded text-white/90"
           >
             📂
+          </button>
+          <button
+            onClick={saveFile}
+            title="Save (Ctrl+S)"
+            className="p-1 hover:bg-white/20 rounded text-white/90"
+          >
+            💾
           </button>
           <button
             onClick={() => addTask(undefined, selectedId)}
@@ -379,4 +386,6 @@ export function Ribbon() {
     </div>
   );
 }
+
+
 
