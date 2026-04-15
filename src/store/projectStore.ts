@@ -143,8 +143,10 @@ export function defaultSettings(): ProjectSettings {
     showCriticalPath: false,
     showBaseline: false,
     showWeekends: false,
-    showDependencies: true,
-    showProgress: true,
+    showDependencies: false,
+    showProgress: false,
+    showTaskDetailsPanel: true,
+    showGanttChart: true,
   };
 }
 
@@ -172,7 +174,14 @@ export function computeWBS(tasks: Task[]): Task[] {
   return result;
 }
 
-export function getVisibleTasks(tasks: Task[], collapsedIds: Set<string>): Task[] {
+export function getVisibleTasks(tasks: Task[], collapsedIds: Set<string>, maxVisibleLevel: number = -1): Task[] {
+  // When maxVisibleLevel >= 0, use hierarchical level-based filtering
+  // instead of individual task collapse state.
+  if (maxVisibleLevel >= 0) {
+    return tasks.filter((t) => t.level <= maxVisibleLevel);
+  }
+
+  // Otherwise use individual collapsedIds
   const hiddenParents = new Set<string>();
 
   collapsedIds.forEach((id) => {
@@ -242,7 +251,11 @@ export interface ProjectContextType {
   view: string;
   setView: (view: string) => void;
   collapsedIds: Set<string>;
+  maxVisibleLevel: number; // -1 = use collapsedIds, >= 0 = show up to this level
   toggleCollapse: (id: string) => void;
+  setMaxVisibleLevel: (level: number) => void;
+  unfoldOneLevel: () => void;
+  foldOneLevel: () => void;
   selection: Set<string>;
   selectTask: (id: string, multi: boolean, range: boolean) => void;
   clearSelection: () => void;
@@ -287,5 +300,9 @@ export function useProject(): ProjectContextType {
   if (!ctx) throw new Error('useProject must be used within ProjectProvider');
   return ctx;
 }
+
+
+
+
 
 

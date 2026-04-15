@@ -13,6 +13,7 @@ export enum TaskType {
   Task = 'task',
   Summary = 'summary',
   Milestone = 'milestone',
+  Project = 'project', // GAN project task (flattened project-level summary)
 }
 
 export enum ConstraintType {
@@ -50,15 +51,26 @@ export interface Task {
   constraint?: ConstraintType;
   constraintDate?: Date;
   
+  // GAN / MS Project specific
+  uid?: string; // GAN unique ID
+  webLink?: string;
+
   // Computed
   level: number;
   order: number;
   
   // Display
   color?: string;
-  
-  // MS Project / GAN specific
-  customFields?: Record<string, unknown>;
+
+  // Extended GAN fields stored in customFields
+  customFields?: {
+    thirdDate?: Date;
+    thirdDateConstraint?: ConstraintType;
+    shape?: string;
+    cost?: number;
+    // Allow additional custom fields
+    [key: string]: unknown;
+  };
 }
 
 export interface Dependency {
@@ -99,6 +111,7 @@ export interface Project {
   startDate: Date;
   author?: string;
   company?: string;
+  webLink?: string;
   currency?: string;
   
   tasks: Task[];
@@ -124,6 +137,8 @@ export interface ProjectSettings {
   showWeekends: boolean;
   showDependencies: boolean;
   showProgress: boolean;
+  showTaskDetailsPanel: boolean;
+  showGanttChart: boolean;
 }
 
 export type ZoomLevel = 'days' | 'weeks' | 'months' | 'quarters' | 'years';
@@ -173,3 +188,8 @@ export interface ImportResult {
   warnings: string[];
   errors: string[];
 }
+
+
+
+
+

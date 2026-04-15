@@ -15,10 +15,27 @@ import { parseMppFile, parseMspXmlFile } from '../parsers/mppParser';
 import { exportToGan, exportToCsv, downloadFile } from '../parsers/ganExporter';
 import { addDays } from 'date-fns';
 
+/** Parse any supported file by extension — used by both File System Access API and fallback. */
+async function parseFileByExtension(file: File) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.gan')) return parseGanFile(file);
+  if (name.endsWith('.mpp')) return parseMppFile(file);
+  if (name.endsWith('.xml')) return parseMspXmlFile(file);
+  throw new Error(`Unsupported file type: ${file.name}`);
+}
+
+/** Write content to a file handle via the File System Access API. */
+async function writeFileHandle(content: string, handle: FileSystemFileHandle) {
+  const writable = await handle.createWritable();
+  await writable.write(content);
+  await writable.close();
+}
+
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [project, setProject] = useState<Project>(createDefaultProject);
   const [view, setView] = useState<string>('gantt');
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
+  const [maxVisibleLevel, setMaxVisibleLevelState] = useState<number>(-1); // -1 = use collapsedIds
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selectedDependencyId, setSelectedDependencyId] = useState<string | null>(null);
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
@@ -65,12 +82,35 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleCollapse = useCallback((id: string) => {
+    // Switching to individual collapse mode — clear maxVisibleLevel
+    setMaxVisibleLevelState(-1);
     setCollapsedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
+  }, []);
+
+  // Unfold one level deeper — reveal the next level of children
+  const unfoldOneLevel = useCallback(() => {
+    setMaxVisibleLevelState((prev) => {
+      const next = prev < 0 ? 0 : prev + 1;
+      return next;
+    });
+  }, []);
+
+  // Fold one level up — hide the deepest level
+  const foldOneLevel = useCallback(() => {
+    setMaxVisibleLevelState((prev) => {
+      if (prev <= 0) return -1; // Back to collapsedIds mode
+      return prev - 1;
+    });
+  }, []);
+
+  // Direct level setter (for resetting from toolbar)
+  const setMaxVisibleLevel = useCallback((level: number) => {
+    setMaxVisibleLevelState(level);
   }, []);
 
   // ============================================================================
@@ -320,6 +360,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const loadProject = useCallback((p: Project) => {
     setProject(p);
     setCollapsedIds(new Set());
+    setMaxVisibleLevelState(-1);
     setSelection(new Set());
     setSelectedDependencyId(null);
   }, []);
@@ -328,6 +369,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const newProj = { ...createDefaultProject(), isDirty: false };
     setProject(newProj);
     setCollapsedIds(new Set());
+    setMaxVisibleLevelState(-1);
     setSelection(new Set());
     setSelectedDependencyId(null);
   }, []);
@@ -348,55 +390,110 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   // File Operations
   // ============================================================================
 
-  const openFile = useCallback(() => {
+  const openFile = useCallback(async () => {
+    // Try File System Access API first (works when app is installed as PWA)
+    if ('showOpenFilePicker' in window) {
+      try {
+        const [handle] = await window.showOpenFilePicker({
+          types: [
+            {
+              description: 'GanttProject files',
+              accept: { 'application/xml': ['.gan', '.xml'], 'application/octet-stream': ['.mpp'] },
+            },
+          ],
+        });
+        const file = await handle.getFile();
+        const result = await parseFileByExtension(file);
+        loadProject({ ...result.project, name: file.name.replace(/\.[^.]+$/, '') });
+        if (result.warnings.length > 0) {
+          alert(`Imported with ${result.warnings.length} warning(s):\n\n${result.warnings.slice(0, 3).join('\n')}`);
+        }
+        return;
+      } catch (err: unknown) {
+        if ((err as Error)?.name === 'AbortError') return; // User cancelled
+        // Fall through to fallback on other errors
+      }
+    }
+
+    // Fallback: hidden file input
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.gan,.mpp,.xml';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-
       try {
-        let result;
-        if (file.name.toLowerCase().endsWith('.gan')) {
-          result = await parseGanFile(file);
-        } else if (file.name.toLowerCase().endsWith('.mpp')) {
-          result = await parseMppFile(file);
-        } else if (file.name.toLowerCase().endsWith('.xml')) {
-          result = await parseMspXmlFile(file);
-        } else {
-          throw new Error(`Unsupported file type: ${file.name}`);
-        }
-
+        const result = await parseFileByExtension(file);
         loadProject({ ...result.project, name: file.name.replace(/\.[^.]+$/, '') });
-
         if (result.warnings.length > 0) {
-          console.warn('Import warnings:', result.warnings);
-          alert(`File imported with ${result.warnings.length} warning(s):\n\n${result.warnings.slice(0, 3).join('\n')}`);
+          alert(`Imported with ${result.warnings.length} warning(s):\n\n${result.warnings.slice(0, 3).join('\n')}`);
         }
       } catch (err) {
         alert(`Failed to import file:\n${(err as Error).message}`);
-        console.error(err);
       }
     };
     input.click();
   }, [loadProject]);
 
-  const saveAs = useCallback(() => {
-    const suggestedName = project.name.replace(/[^a-z0-9\-_\s]/gi, '_') || 'Untitled';
-    const filename = window.prompt('Enter filename:', suggestedName);
-    if (!filename) return; // User cancelled
-    const finalName = filename.endsWith('.gan') ? filename : `${filename}.gan`;
+  const saveAs = useCallback(async () => {
+    const suggestedName = (project.name.replace(/[^a-z0-9\-_\s]/gi, '_') || 'Untitled') + '.gan';
     const xml = exportToGan(project);
+
+    // Try File System Access API first — lets user choose the save directory
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: 'GanttProject files',
+              accept: { 'application/xml': ['.gan'] },
+            },
+          ],
+        });
+        await writeFileHandle(xml, handle);
+        setProject((prev) => ({ ...prev, name: handle.name.replace(/\.gan$/, ''), isDirty: false }));
+        return;
+      } catch (err: unknown) {
+        if ((err as Error)?.name === 'AbortError') return; // User cancelled
+        // Fall through to fallback on other errors
+      }
+    }
+
+    // Fallback: prompt for filename then download as blob
+    const filename = window.prompt('Enter filename:', suggestedName);
+    if (!filename) return;
+    const finalName = filename.endsWith('.gan') ? filename : `${filename}.gan`;
     downloadFile(xml, finalName, 'application/xml');
-    // Update project name to match the saved filename
-    setProject((prev) => ({ ...prev, name: filename.replace(/\.gan$/, ''), isDirty: false }));
+    setProject((prev) => ({ ...prev, name: finalName.replace(/\.gan$/, ''), isDirty: false }));
   }, [project]);
 
-  const saveFile = useCallback(() => {
+  const saveFile = useCallback(async () => {
+    const suggestedName = `${project.name.replace(/[^a-z0-9\-_\s]/gi, '_') || 'Untitled'}.gan`;
     const xml = exportToGan(project);
-    const filename = `${project.name.replace(/[^a-z0-9\-_\s]/gi, '_')}.gan`;
-    downloadFile(xml, filename, 'application/xml');
+
+    if ('showSaveFilePicker' in window) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: [
+            {
+              description: 'GanttProject files',
+              accept: { 'application/xml': ['.gan'] },
+            },
+          ],
+        });
+        await writeFileHandle(xml, handle);
+        setProject((prev) => ({ ...prev, isDirty: false }));
+        return;
+      } catch (err: unknown) {
+        if ((err as Error)?.name === 'AbortError') return;
+        // Fall through to fallback on other errors
+      }
+    }
+
+    // Fallback: direct blob download
+    downloadFile(xml, suggestedName, 'application/xml');
     setProject((prev) => ({ ...prev, isDirty: false }));
   }, [project]);
 
@@ -419,7 +516,11 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     view,
     setView,
     collapsedIds,
+    maxVisibleLevel,
     toggleCollapse,
+    setMaxVisibleLevel,
+    unfoldOneLevel,
+    foldOneLevel,
     selection,
     selectTask,
     clearSelection,
@@ -438,13 +539,16 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     updateResource,
     deleteResource,
     loadProject,
+    newProject,
     updateProjectName,
     updateSettings,
     openFile,
     saveFile,
+    saveAs,
     exportAs,
   }), [
-    project, view, collapsedIds, toggleCollapse, selection, selectTask,
+    project, view, collapsedIds, maxVisibleLevel, toggleCollapse, setMaxVisibleLevel,
+    unfoldOneLevel, foldOneLevel, selection, selectTask,
     clearSelection, selectedDependencyId, selectDependency,
     addTask, updateTask, deleteSelectedTasks, indentTask, outdentTask,
     moveTaskUp, moveTaskDown, addDependency, deleteDependency,
@@ -467,6 +571,18 @@ function isDescendantOf(tasks: Task[], taskId: string, ancestorId: string): bool
   if (task.parentId === ancestorId) return true;
   return isDescendantOf(tasks, task.parentId, ancestorId);
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

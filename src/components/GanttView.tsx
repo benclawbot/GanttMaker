@@ -9,7 +9,8 @@ const DIVIDER_DEFAULT = 420;
 
 export function GanttView() {
   const { project, selection, selectTask, clearSelection, deleteSelectedTasks, addTask,
-    indentTask, outdentTask, selectedDependencyId, deleteDependency, collapsedIds } = useProject();
+    indentTask, outdentTask, selectedDependencyId, deleteDependency, collapsedIds,
+    maxVisibleLevel, toggleCollapse, setMaxVisibleLevel, unfoldOneLevel, foldOneLevel } = useProject();
 
   const [gridWidth, setGridWidth] = useState(DIVIDER_DEFAULT);
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
@@ -17,8 +18,8 @@ export function GanttView() {
   const [scrollTop, setScrollTop] = useState(0);
   const gridScrollRef = useRef<HTMLDivElement>(null);
 
-  // Get visible tasks (respecting collapse state)
-  const visibleTasks = getVisibleTasks(project.tasks, collapsedIds);
+  // Get visible tasks (respecting collapse state and maxVisibleLevel)
+  const visibleTasks = getVisibleTasks(project.tasks, collapsedIds, maxVisibleLevel);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -143,6 +144,33 @@ export function GanttView() {
               🗑️ Delete
             </button>
           )}
+
+          {/* Hierarchical fold/unfold controls */}
+          <div className="flex items-center gap-0.5 ml-1">
+            <button
+              onClick={foldOneLevel}
+              disabled={maxVisibleLevel < 0}
+              className={`text-[10px] px-1 py-0.5 rounded ${maxVisibleLevel < 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600 hover:bg-gray-200'}`}
+              title="Fold up one level"
+            >
+              ▲
+            </button>
+            <span
+              className={`text-[9px] px-1.5 py-0.5 rounded min-w-[28px] text-center cursor-pointer ${maxVisibleLevel >= 0 ? 'bg-blue-100 text-blue-700 font-medium' : 'text-gray-400 hover:bg-gray-100'}`}
+              onClick={() => maxVisibleLevel < 0 ? setMaxVisibleLevel(0) : null}
+              title={maxVisibleLevel >= 0 ? 'Click to switch to individual collapse mode' : 'Hierarchical unfold mode'}
+            >
+              {maxVisibleLevel < 0 ? 'All' : `L${maxVisibleLevel}`}
+            </span>
+            <button
+              onClick={unfoldOneLevel}
+              className="text-[10px] px-1 py-0.5 rounded text-gray-600 hover:bg-gray-200"
+              title="Unfold one more level"
+            >
+              ▼
+            </button>
+          </div>
+
           <div className="flex-1" />
           <span className="text-[10px] text-gray-400">{visibleTasks.length} tasks</span>
         </div>
@@ -184,4 +212,7 @@ export function GanttView() {
     </div>
   );
 }
+
+
+
 

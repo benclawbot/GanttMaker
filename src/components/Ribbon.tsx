@@ -296,15 +296,15 @@ export function Ribbon() {
                 size="large"
                 icon="📊"
                 label="Gantt Chart"
-                onClick={() => setView('gantt')}
-                active={view === 'gantt'}
+                onClick={() => updateSettings({ showGanttChart: !project.settings.showGanttChart })}
+                active={project.settings.showGanttChart}
               />
               <RibbonButton
                 size="large"
                 icon="📋"
                 label="Task Sheet"
-                onClick={() => setView('tasks')}
-                active={view === 'tasks'}
+                onClick={() => updateSettings({ showTaskDetailsPanel: !project.settings.showTaskDetailsPanel })}
+                active={project.settings.showTaskDetailsPanel}
               />
             </RibbonGroup>
 
@@ -383,6 +383,9 @@ export function Ribbon() {
     </div>
   );
 }
+
+
+
 
 
 

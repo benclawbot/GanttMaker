@@ -25,9 +25,44 @@ export interface ElectronAPI {
   onFileOpened: (callback: (path: string) => void) => () => void;
 }
 
+// File System Access API (used when app is installed as PWA)
+export interface FileSystemWritableFileOptions {
+  type?: 'write' | 'writetruncate' | 'append';
+  data?: Blob | BufferSource | string;
+  size?: number;
+}
+
+export interface FilePickerAcceptType {
+  description?: string;
+  accept: Record<string, string[]>;
+}
+
+export interface SaveFilePickerOptions {
+  suggestedName?: string;
+  types?: FilePickerAcceptType[];
+}
+
+export interface OpenFilePickerOptions {
+  multiple?: boolean;
+  types?: FilePickerAcceptType[];
+}
+
 declare global {
   interface Window {
     electronAPI?: ElectronAPI;
+    showSaveFilePicker?: (options?: SaveFilePickerOptions) => Promise<FileSystemFileHandle>;
+    showOpenFilePicker?: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]>;
+  }
+
+  interface FileSystemFileHandle {
+    name: string;
+    getFile(): Promise<File>;
+    createWritable(): Promise<FileSystemWritableFileWriter>;
+  }
+
+  interface FileSystemWritableFileWriter {
+    write(data: Blob | BufferSource | string): Promise<void>;
+    close(): Promise<void>;
   }
 }
 

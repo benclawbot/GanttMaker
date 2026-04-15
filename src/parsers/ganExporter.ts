@@ -1,11 +1,20 @@
 /**
  * GanttProject .gan File Exporter
- * Converts our internal Project to .gan XML format
+ * Converts our internal Project to .gan XML format.
+ * Reference: GanttProject TaskSaver.kt and XmlSerializer.kt
+ *
+ * Key GAN format rules:
+ * - Dates: YYYY-MM-DD
+ * - Duration: in working days. GAN computes endDate = startDate + duration - 1.
+ *   e.g. start=Jan 13, duration=5 → task spans Jan 13-17 (5 days).
+ *   When exporting: duration = (endDate - startDate) + 1
+ * - Milestones: always meeting="true" duration="0"
+ * - Project tasks: project="true"
  */
 
 import type { Project, Task, Dependency, Resource } from '../types';
-import { DependencyType } from '../types';
-import { format } from 'date-fns';
+import { DependencyType, TaskType } from '../types';
+import { differenceInDays } from 'date-fns';
 
 function depTypeToGan(type: DependencyType): string {
   switch (type) {
@@ -17,11 +26,49 @@ function depTypeToGan(type: DependencyType): string {
   }
 }
 
-function formatGanDate(date: Date): string {
-  return format(date, 'yyyy-MM-dd');
+function ganDepTypeToDep(type: string): DependencyType {
+  switch (type) {
+    case '0': return DependencyType.SS;
+    case '1': return DependencyType.SF;
+    case '2': return DependencyType.FS;
+    case '3': return DependencyType.FF;
+    default: return DependencyType.FS;
+  }
 }
 
-function escapeXml(str: string): string {
+function priorityToGan(priority: Task['priority']): string {
+  switch (priority) {
+    case 'Low': return '0';
+    case 'Normal': return '1';
+    case 'High': return '2';
+    case 'Critical': return '3';
+    default: return '1';
+  }
+}
+
+function constraintToGanThirdDateConstraint(
+  constraint: Task['customFields'] extends Record<string, infer V> ? V : never
+): number | undefined {
+  if (!constraint) return undefined;
+  switch (constraint) {
+    case 'FNET': return 0; // finish no earlier than
+    case 'SNET': return 1; // start no earlier than
+    case 'MSO':  return 2; // must start on
+    case 'MFO':  return 3; // must finish on
+    case 'FNLT': return 5; // finish no later
+    default: return undefined;
+  }
+}
+
+function formatGanDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function escapeXml(str: string | undefined): string {
+  if (!str) return '';
   return str
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -40,16 +87,52 @@ function renderTasks(tasks: Task[], parentId: string | undefined, deps: Dependen
       `      <depend id="${escapeXml(d.toTaskId)}" type="${depTypeToGan(d.type)}" difference="${d.lag}" hardness="Strong"/>`
     ).join('\n');
 
-    const hasChildren = tasks.some((t) => t.parentId === task.id);
-    const childXml = hasChildren ? renderTasks(tasks, task.id, deps) : '';
+    const childTaskEls = tasks.filter((t) => t.parentId === task.id);
+    const childXml = childTaskEls.length > 0 ? renderTasks(tasks, task.id, deps) : '';
 
-    xml += `    <task id="${escapeXml(task.id)}" name="${escapeXml(task.name)}" ` +
-      `color="${task.color || '#8cb6ce'}" ` +
-      `meeting="${task.isMilestone ? 'true' : 'false'}" ` +
-      `start="${formatGanDate(task.startDate)}" ` +
-      `duration="${task.duration}" ` +
-      `complete="${task.progress}" ` +
-      `expand="true">\n`;
+    // Duration: GAN computes endDate = startDate + duration - 1.
+    // So duration = (endDate - startDate) + 1.
+    // Milestones always use duration=0.
+    const dur = task.type === TaskType.Milestone
+      ? 0
+      : Math.max(1, differenceInDays(task.endDate, task.startDate) + 1);
+
+    // Build attribute string conditionally (only include attributes with values)
+    const attrs: string[] = [];
+    attrs.push(`id="${escapeXml(task.id)}"`);
+    if (task.uid) attrs.push(`uid="${escapeXml(task.uid)}"`);
+    attrs.push(`name="${escapeXml(task.name)}"`);
+    if (task.color) attrs.push(`color="${escapeXml(task.color)}"`);
+    if (task.shape) attrs.push(`shape="${escapeXml(task.shape)}"`);
+    // Milestone marker
+    attrs.push(`meeting="${task.type === TaskType.Milestone ? 'true' : 'false'}"`);
+    // Project task marker
+    if (task.type === TaskType.Project) attrs.push(`project="true"`);
+    attrs.push(`start="${formatGanDate(task.startDate)}"`);
+    attrs.push(`duration="${dur}"`);
+    attrs.push(`complete="${task.progress}"`);
+    if (task.priority && task.priority !== 'Normal') {
+      attrs.push(`priority="${priorityToGan(task.priority)}"`);
+    }
+    if (task.webLink) attrs.push(`webLink="${escapeXml(task.webLink)}"`);
+    // expand: false when collapsed
+    attrs.push(`expand="${task.isCollapsed ? 'false' : 'true'}"`);
+
+    // thirdDate (baseline earliest start)
+    const thirdDate = task.customFields?.thirdDate as Date | undefined;
+    if (thirdDate) {
+      attrs.push(`thirdDate="${formatGanDate(thirdDate)}"`);
+      const c = constraintToGanThirdDateConstraint(task.customFields?.thirdDateConstraint as any);
+      if (c !== undefined) attrs.push(`thirdDate-constraint="${c}"`);
+    }
+
+    // cost
+    const cost = task.customFields?.cost as number | undefined;
+    if (cost !== undefined) {
+      attrs.push(`cost-manual-value="${cost}"`);
+    }
+
+    xml += `    <task ${attrs.join(' ')}>\n`;
 
     if (depXml) xml += depXml + '\n';
     if (task.notes) xml += `      <notes><![CDATA[${task.notes}]]></notes>\n`;
@@ -66,7 +149,7 @@ export function exportToGan(project: Project): string {
 
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
   xml += `<project name="${escapeXml(project.name)}" company="${escapeXml(project.company || '')}" `;
-  xml += `webLink="" view-date="${projectStart}" view-index="0" `;
+  xml += `webLink="${escapeXml(project.webLink || '')}" view-date="${projectStart}" view-index="0" `;
   xml += `gantt-divider-location="374" resource-divider-location="322" `;
   xml += `version="3.3" locale="en">\n`;
 
@@ -140,8 +223,8 @@ export function exportToCsv(project: Project): string {
       task.wbsCode || '',
       `"${task.name.replace(/"/g, '""')}"`,
       task.type,
-      task.startDate.toLocaleDateString(),
-      task.endDate.toLocaleDateString(),
+      formatGanDate(task.startDate),
+      formatGanDate(task.endDate),
       task.duration,
       task.progress,
       task.priority,

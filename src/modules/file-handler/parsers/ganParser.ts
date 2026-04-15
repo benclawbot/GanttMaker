@@ -270,17 +270,24 @@ function parseAllocationsElement(allocationsElement: Element) {
 
 /**
  * Parse date string in GanttProject format (YYYY-MM-DD)
+ * Uses UTC to avoid local timezone offset shifting the date.
+ * GanttProject stores dates as calendar dates (YYYY-MM-DD) — treating them
+ * as UTC midnight matches GanttProject's display behavior.
  */
 function parseGanDate(dateStr: string): Date {
-  // GanttProject uses format like "2024-01-15"
-  const parts = dateStr.split('-');
-  if (parts.length === 3) {
-    const year = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10) - 1; // JS months are 0-indexed
-    const day = parseInt(parts[2], 10);
-    return new Date(year, month, day);
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const utcDate = Date.UTC(
+      parseInt(match[1], 10),
+      parseInt(match[2], 10) - 1,
+      parseInt(match[3], 10)
+    );
+    return new Date(utcDate);
   }
-  return new Date(dateStr);
+  // Fallback for other formats
+  const fallback = new Date(dateStr);
+  if (!isNaN(fallback.getTime())) return fallback;
+  return new Date(); // Safe fallback to current date
 }
 
 /**
@@ -339,3 +346,4 @@ export async function validateGanFile(file: File): Promise<{ isValid: boolean; e
     return { isValid: false, errors: [`Failed to read file: ${error}`] };
   }
 }
+

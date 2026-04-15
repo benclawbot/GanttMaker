@@ -1,0 +1,26 @@
+{
+  "name": "GanttMaker",
+  "short_name": "GanttMaker",
+  "description": "Professional Gantt chart and project management tool",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2b579a",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232b579a'%3E%3Crect x='3' y='3' width='4' height='18' rx='1'/%3E%3Crect x='9' y='3' width='12' height='6' rx='1'/%3E%3Crect x='9' y='11' width='9' height='4' rx='1'/%3E%3C/svg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/",
+      "accept": {
+        "application/xml": [".gan"],
+        "application/octet-stream": [".mpp", ".xml"]
+      }
+    }
+  ]
+}

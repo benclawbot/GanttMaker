@@ -40,13 +40,15 @@ function AppContent() {
       <div className="flex flex-1 overflow-hidden">
         {view === 'gantt' || view === 'tasks' ? (
           <>
-            {/* Left: Gantt View (split pane) */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-              <GanttView />
-            </div>
+            {/* Left: Gantt View */}
+            {project.settings.showGanttChart && (
+              <div className="flex-1 flex flex-col overflow-hidden">
+                <GanttView />
+              </div>
+            )}
 
             {/* Right: Properties Panel */}
-            <TaskPropertiesPanel />
+            {project.settings.showTaskDetailsPanel && <TaskPropertiesPanel />}
           </>
         ) : view === 'resources' ? (
           <div className="flex-1 overflow-hidden">
@@ -70,3 +72,5 @@ function App() {
 }
 
 export default App;
+
+

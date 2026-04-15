@@ -5,6 +5,7 @@
  */
 
 import React, { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { format } from 'date-fns';
 import { useTaskManager } from '@context/TaskContext';
 import { DependencyType } from '@modules/task-manager/types';
 
@@ -980,8 +981,8 @@ function TaskDetails({ taskId, links = [] }: TaskDetailsProps) {
   return (
     <div className="text-sm space-y-1">
       <p><span className="text-gray-600">Name:</span> {task.text}</p>
-      <p><span className="text-gray-600">Start:</span> {task.startDate?.toLocaleDateString()}</p>
-      <p><span className="text-gray-600">End:</span> {task.endDate?.toLocaleDateString()}</p>
+      <p><span className="text-gray-600">Start:</span> {task.startDate ? format(task.startDate, 'dd/MM/yyyy') : '-'}</p>
+      <p><span className="text-gray-600">End:</span> {task.endDate ? format(task.endDate, 'dd/MM/yyyy') : '-'}</p>
       <p><span className="text-gray-600">Progress:</span> {task.progress || 0}%</p>
       <p><span className="text-gray-600">Type:</span> {task.type || 'task'}</p>
       {task.parentId && <p><span className="text-gray-600">Parent:</span> {task.parentId}</p>}
@@ -1003,5 +1004,7 @@ function TaskDetails({ taskId, links = [] }: TaskDetailsProps) {
 }
 
 export default GanttChart;
+
+
 
 

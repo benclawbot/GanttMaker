@@ -39,8 +39,8 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
       case 'id': return task.wbsCode || task.id;
       case 'name': return task.name;
       case 'duration': return task.isMilestone ? '0d' : `${task.duration}d`;
-      case 'startDate': return format(task.startDate, 'MM/dd/yyyy');
-      case 'endDate': return format(task.endDate, 'MM/dd/yyyy');
+      case 'startDate': return format(task.startDate, 'dd/MM/yyyy');
+      case 'endDate': return format(task.endDate, 'dd/MM/yyyy');
       case 'progress': return `${task.progress}%`;
       case 'resources': return getResourceNames(task.resources);
       default: return '';
@@ -267,6 +267,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
     </div>
   );
 }
+
 
 
 
