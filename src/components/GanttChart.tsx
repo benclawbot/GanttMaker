@@ -9,11 +9,11 @@ import { TaskType, DependencyType } from '../types';
 import {
   createTimeline,
   dateToX,
+  formatTimelineColumnLabel,
   getPixelsPerDayAtDate,
   getTimelineGuides,
   type TimelineInfo,
 } from '../utils/ganttTimeline';
-import { formatDisplayDate } from '../utils/dates';
 
 const ROW_HEIGHT = 32;
 const HEADER_HEIGHT = 52; // Two-row header
@@ -335,7 +335,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
                   ${isSameDay(date, today) ? 'bg-blue-50 font-bold text-blue-700' : ''}`}
                 style={{ width: timeline.colWidth }}
               >
-                {formatColHeader(date, project.settings.zoomLevel)}
+                {formatTimelineColumnLabel(date, project.settings.zoomLevel)}
               </div>
             ))}
           </div>
@@ -370,7 +370,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
             );
           })}
 
-          {/* Sub-period guides make exact dates visible inside week/month/quarter/year columns. */}
+          {/* Sub-period guides preserve exact placement without crowding the header labels. */}
           {timelineGuides.map((guide) => (
             <g key={`${guide.date.toISOString()}-${guide.label}`}>
               <line
@@ -382,17 +382,6 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
                 strokeWidth={guide.isMajor ? 1 : 0.75}
                 strokeDasharray={guide.isMajor ? undefined : '2,3'}
               />
-              {project.settings.zoomLevel !== 'days' && (
-                <text
-                  x={guide.x + 3}
-                  y={11}
-                  fill="#6b7280"
-                  fontSize={9}
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {guide.label}
-                </text>
-              )}
             </g>
           ))}
 
@@ -688,17 +677,6 @@ function renderTopHeaders(timeline: TimelineInfo, zoomLevel: string): React.Reac
 
   // Years - just empty top header
   return [<div key={0} className="flex-1 bg-gray-100" />];
-}
-
-function formatColHeader(date: Date, zoomLevel: string): string {
-  switch (zoomLevel) {
-    case 'days': return formatDisplayDate(date);
-    case 'weeks': return `W${format(date, 'w')} ${formatDisplayDate(date)}`;
-    case 'months': return formatDisplayDate(date);
-    case 'quarters': return `Q${Math.ceil((date.getMonth() + 1) / 3)} ${formatDisplayDate(date)}`;
-    case 'years': return formatDisplayDate(date);
-    default: return formatDisplayDate(date);
-  }
 }
 
 
