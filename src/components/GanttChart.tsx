@@ -10,6 +10,7 @@ import {
   createTimeline,
   dateToX,
   getPixelsPerDayAtDate,
+  getTimelineGuides,
   type TimelineInfo,
 } from '../utils/ganttTimeline';
 import { formatDisplayDate } from '../utils/dates';
@@ -67,6 +68,10 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
   const [tooltip, setTooltip] = useState<{ task: Task; x: number; y: number } | null>(null);
 
   const timeline = useTimeline(visibleTasks, project.settings.zoomLevel);
+  const timelineGuides = useMemo(
+    () => getTimelineGuides(timeline, project.settings.zoomLevel),
+    [timeline, project.settings.zoomLevel],
+  );
   const dragPixelsPerDay = getPixelsPerDayAtDate(dragging?.startDate || new Date(), timeline);
   const totalWidth = timeline.totalWidth;
   const totalHeight = visibleTasks.length * ROW_HEIGHT;
@@ -364,6 +369,32 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
               </g>
             );
           })}
+
+          {/* Sub-period guides make exact dates visible inside week/month/quarter/year columns. */}
+          {timelineGuides.map((guide) => (
+            <g key={`${guide.date.toISOString()}-${guide.label}`}>
+              <line
+                x1={guide.x}
+                y1={0}
+                x2={guide.x}
+                y2={totalHeight + 20}
+                stroke={guide.isMajor ? '#d1d5db' : '#e5e7eb'}
+                strokeWidth={guide.isMajor ? 1 : 0.75}
+                strokeDasharray={guide.isMajor ? undefined : '2,3'}
+              />
+              {project.settings.zoomLevel !== 'days' && (
+                <text
+                  x={guide.x + 3}
+                  y={11}
+                  fill="#6b7280"
+                  fontSize={9}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {guide.label}
+                </text>
+              )}
+            </g>
+          ))}
 
           {/* Row alternating background */}
           {visibleTasks.map((_, i) => (

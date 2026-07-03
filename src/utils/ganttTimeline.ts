@@ -10,6 +10,7 @@ import {
   eachQuarterOfInterval,
   eachWeekOfInterval,
   eachYearOfInterval,
+  format,
   startOfDay,
   startOfMonth,
   startOfQuarter,
@@ -33,6 +34,13 @@ export interface TimelineInfo {
   endDate: Date;
   totalDays: number;
   totalWidth: number;
+}
+
+export interface TimelineGuide {
+  date: Date;
+  x: number;
+  label: string;
+  isMajor: boolean;
 }
 
 type ZoomConfig = {
@@ -156,4 +164,53 @@ export function getPixelsPerDayAtDate(date: Date, timeline: TimelineInfo): numbe
 
   const daysInColumn = Math.max(1, differenceInCalendarDays(column.endDate, column.startDate));
   return column.width / daysInColumn;
+}
+
+export function getTimelineGuides(timeline: TimelineInfo, zoomLevel: ZoomLevel): TimelineGuide[] {
+  const guides: TimelineGuide[] = [];
+  const pushGuide = (date: Date, label: string, isMajor = false) => {
+    if (date < timeline.startDate || date >= timeline.endDate) return;
+    guides.push({ date, x: dateToX(date, timeline), label, isMajor });
+  };
+
+  if (zoomLevel === 'days') {
+    timeline.columns.forEach((column) => {
+      pushGuide(column.startDate, format(column.startDate, 'dd/MM'), true);
+    });
+    return guides;
+  }
+
+  if (zoomLevel === 'weeks') {
+    timeline.columns.forEach((column) => {
+      let cursor = column.startDate;
+      while (cursor < column.endDate) {
+        pushGuide(cursor, format(cursor, 'dd/MM'), cursor.getDay() === 1);
+        cursor = addDays(cursor, 1);
+      }
+    });
+    return guides;
+  }
+
+  if (zoomLevel === 'months') {
+    timeline.columns.forEach((column) => {
+      let cursor = column.startDate;
+      while (cursor < column.endDate) {
+        pushGuide(cursor, format(cursor, 'dd/MM'), cursor.getDate() === 1);
+        cursor = addWeeks(cursor, 1);
+      }
+    });
+    return guides;
+  }
+
+  if (zoomLevel === 'quarters' || zoomLevel === 'years') {
+    timeline.columns.forEach((column) => {
+      let cursor = column.startDate;
+      while (cursor < column.endDate) {
+        pushGuide(cursor, format(cursor, 'dd/MM'), true);
+        cursor = addMonths(cursor, 1);
+      }
+    });
+  }
+
+  return guides;
 }

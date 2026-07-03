@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createTimeline, dateToX } from './ganttTimeline';
+import { createTimeline, dateToX, getTimelineGuides } from './ganttTimeline';
 import { TaskType, type Task } from '../types';
 
 function task(startDate: Date, endDate: Date): Task {
@@ -22,6 +22,23 @@ function task(startDate: Date, endDate: Date): Task {
 }
 
 describe('gantt timeline positioning', () => {
+  it('exposes exact day guides inside weekly columns', () => {
+    const timeline = createTimeline(
+      [task(new Date(2026, 6, 3), new Date(2026, 6, 8))],
+      'weeks',
+      new Date(2026, 6, 3),
+    );
+    const july3X = dateToX(new Date(2026, 6, 3), timeline);
+    const weekStartX = dateToX(new Date(2026, 5, 29), timeline);
+    const guides = getTimelineGuides(timeline, 'weeks');
+    const july3Guide = guides.find((guide) => guide.label === '03/07');
+
+    expect(july3Guide).toBeDefined();
+    expect(july3Guide?.x).toBeCloseTo(july3X);
+    expect(july3Guide!.x).toBeGreaterThan(weekStartX);
+    expect(july3Guide!.x).toBeLessThan(weekStartX + timeline.colWidth);
+  });
+
   it('positions month zoom dates using real calendar month lengths', () => {
     const timeline = createTimeline(
       [task(new Date(2026, 0, 31), new Date(2026, 2, 2))],
