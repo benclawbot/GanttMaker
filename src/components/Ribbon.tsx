@@ -73,11 +73,15 @@ export function Ribbon() {
   const [activeTab, setActiveTab] = useState('task');
   const {
     project, view, setView, selection, deleteSelectedTasks,
-    addTask, indentTask, outdentTask, moveTaskUp, moveTaskDown,
-    openFile, saveFile, saveAs, exportAs, updateSettings, newProject,
+    addTask, addMilestone, indentTask, outdentTask, moveTaskUp, moveTaskDown,
+    linkSelectedTasks, unlinkSelectedTasks, setSelectedTasksProgress,
+    selectedDependencyId,
+    openFile, saveFile, saveAs, exportAs, updateSettings, updateProjectName, newProject,
   } = useProject();
 
   const selectedId = selection.size === 1 ? Array.from(selection)[0] : undefined;
+  const canLink = selection.size >= 2;
+  const canUnlink = selection.size >= 2 || Boolean(selectedDependencyId);
 
   return (
     <div className="bg-white border-b border-gray-300 select-none">
@@ -179,11 +183,7 @@ export function Ribbon() {
                 <RibbonButton
                   icon="◇"
                   label="Milestone"
-                  onClick={() => {
-                    if (!selectedId) return;
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                  }}
+                  onClick={() => addMilestone(undefined, selectedId)}
                   title="Insert milestone"
                 />
                 <RibbonButton
@@ -241,31 +241,36 @@ export function Ribbon() {
 
             <RibbonGroup label="Schedule">
               <div className="flex flex-col gap-0.5">
-                <RibbonButton icon="🔗" label="Link Tasks" title="Link selected tasks (Ctrl+F2)" />
-                <RibbonButton icon="🔓" label="Unlink" title="Remove dependencies" />
+                <RibbonButton
+                  icon="🔗"
+                  label="Link Tasks"
+                  onClick={linkSelectedTasks}
+                  disabled={!canLink}
+                  title="Link selected tasks in task order"
+                />
+                <RibbonButton
+                  icon="🔓"
+                  label="Unlink"
+                  onClick={unlinkSelectedTasks}
+                  disabled={!canUnlink}
+                  title="Remove dependencies between selected tasks"
+                />
               </div>
               <div className="flex flex-col gap-0.5">
                 <RibbonButton
-                  icon="✅"
-                  label="Mark Complete"
-                  onClick={() => {
-                    if (selectedId) {
-                      // markComplete
-                    }
-                  }}
-                  disabled={!selectedId}
+                  icon="0"
+                  label="0%"
+                  onClick={() => setSelectedTasksProgress(0)}
+                  disabled={selection.size === 0}
+                  title="Set selected task progress to 0%"
                 />
-                <RibbonButton icon="📊" label="0% → 100%" />
-              </div>
-            </RibbonGroup>
-
-            <Separator />
-
-            <RibbonGroup label="Editing">
-              <RibbonButton icon="🔍" label="Find" title="Find task (Ctrl+F)" size="large" />
-              <div className="flex flex-col gap-0.5">
-                <RibbonButton icon="↕️" label="Scroll to" title="Scroll to task" />
-                <RibbonButton icon="🎯" label="Go to" />
+                <RibbonButton
+                  icon="100"
+                  label="100%"
+                  onClick={() => setSelectedTasksProgress(100)}
+                  disabled={selection.size === 0}
+                  title="Set selected task progress to 100%"
+                />
               </div>
             </RibbonGroup>
           </>
@@ -281,10 +286,6 @@ export function Ribbon() {
                 onClick={() => setView('resources')}
                 active={view === 'resources'}
               />
-            </RibbonGroup>
-            <Separator />
-            <RibbonGroup label="Insert">
-              <RibbonButton size="large" icon="👤" label="Add Resource" />
             </RibbonGroup>
           </>
         )}

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { format } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useProject } from '../store/projectStore';
 import type { Task } from '../types';
 import { TaskType, DependencyType } from '../types';
+import { formatDisplayDate, parseDisplayDate } from '../utils/dates';
 
 export function TaskPropertiesPanel() {
   const { project, selection, updateTask, addDependency, deleteDependency } = useProject();
@@ -66,7 +67,10 @@ export function TaskPropertiesPanel() {
             <Field label="Type">
               <select
                 value={task.type}
-                onChange={(e) => updateTask(task.id, { type: e.target.value as TaskType })}
+                onChange={(e) => {
+                  const type = e.target.value as TaskType;
+                  updateTask(task.id, { type, isMilestone: type === TaskType.Milestone });
+                }}
                 className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
               >
                 <option value={TaskType.Task}>Task</option>
@@ -85,26 +89,22 @@ export function TaskPropertiesPanel() {
             </Field>
 
             <Field label="Start Date">
-              <input
-                type="date"
-                value={format(task.startDate, 'yyyy-MM-dd')}
-                onChange={(e) => {
-                  const d = new Date(e.target.value + 'T00:00:00');
-                  if (!isNaN(d.getTime())) updateTask(task.id, { startDate: d });
-                }}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+              <DateInput
+                value={task.startDate}
+                onCommit={(date) => updateTask(task.id, {
+                  startDate: date,
+                  endDate: task.isMilestone || task.type === TaskType.Milestone ? date : addDays(date, task.duration),
+                })}
               />
             </Field>
 
             <Field label="End Date">
-              <input
-                type="date"
-                value={format(task.endDate, 'yyyy-MM-dd')}
-                onChange={(e) => {
-                  const d = new Date(e.target.value + 'T00:00:00');
-                  if (!isNaN(d.getTime())) updateTask(task.id, { endDate: d });
-                }}
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+              <DateInput
+                value={task.endDate}
+                onCommit={(date) => updateTask(task.id, {
+                  endDate: date,
+                  duration: Math.max(0, differenceInCalendarDays(date, task.startDate)),
+                })}
               />
             </Field>
 
@@ -293,6 +293,46 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </label>
       {children}
     </div>
+  );
+}
+
+function DateInput({ value, onCommit }: { value: Date; onCommit: (date: Date) => void }) {
+  const [text, setText] = useState(formatDisplayDate(value));
+  const valueTime = value.getTime();
+
+  useEffect(() => {
+    setText(formatDisplayDate(value));
+  }, [valueTime, value]);
+
+  const commit = () => {
+    const parsed = parseDisplayDate(text);
+    if (parsed) {
+      onCommit(parsed);
+    } else {
+      setText(formatDisplayDate(value));
+    }
+  };
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      placeholder="dd/mm/yyyy"
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          commit();
+          e.currentTarget.blur();
+        }
+        if (e.key === 'Escape') {
+          setText(formatDisplayDate(value));
+          e.currentTarget.blur();
+        }
+      }}
+      className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+    />
   );
 }
 

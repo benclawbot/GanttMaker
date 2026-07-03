@@ -1,14 +1,18 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
-  startOfWeek, endOfWeek, eachDayOfInterval, eachWeekOfInterval,
-  eachMonthOfInterval, format, startOfMonth, endOfMonth,
   differenceInCalendarDays, addDays, isWeekend, isSameDay,
-  startOfQuarter, eachQuarterOfInterval, endOfQuarter,
-  startOfYear, eachYearOfInterval, endOfYear,
+  format,
 } from 'date-fns';
 import { useProject } from '../store/projectStore';
-import type { Task, Dependency } from '../types';
+import type { Task, ZoomLevel } from '../types';
 import { TaskType, DependencyType } from '../types';
+import {
+  createTimeline,
+  dateToX,
+  getPixelsPerDayAtDate,
+  type TimelineInfo,
+} from '../utils/ganttTimeline';
+import { formatDisplayDate } from '../utils/dates';
 
 const ROW_HEIGHT = 32;
 const HEADER_HEIGHT = 52; // Two-row header
@@ -28,70 +32,10 @@ interface BarInfo {
   rowIdx: number;
 }
 
-interface TimelineInfo {
-  dates: Date[];
-  colWidth: number;
-  startDate: Date;
-  endDate: Date;
-  totalDays: number;
-}
-
-function useTimeline(tasks: Task[], zoomLevel: string): TimelineInfo {
+function useTimeline(tasks: Task[], zoomLevel: ZoomLevel): TimelineInfo {
   return useMemo(() => {
-    const today = new Date();
-
-    if (tasks.length === 0) {
-      const startDate = addDays(today, -7);
-      const endDate = addDays(today, 60);
-      const totalDays = differenceInCalendarDays(endDate, startDate);
-      return { dates: [], colWidth: 30, startDate, endDate, totalDays };
-    }
-
-    const allStarts = tasks.map((t) => t.startDate);
-    const allEnds = tasks.map((t) => t.endDate);
-    const minDate = new Date(Math.min(...allStarts.map((d) => d.getTime())));
-    const maxDate = new Date(Math.max(...allEnds.map((d) => d.getTime())));
-
-    const startDate = addDays(minDate, -7);
-    const endDate = addDays(maxDate, 14);
-    const totalDays = differenceInCalendarDays(endDate, startDate);
-
-    let dates: Date[] = [];
-    let colWidth = 30;
-
-    switch (zoomLevel) {
-      case 'days':
-        dates = eachDayOfInterval({ start: startDate, end: endDate });
-        colWidth = 30;
-        break;
-      case 'weeks':
-        dates = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
-        colWidth = 80;
-        break;
-      case 'months':
-        dates = eachMonthOfInterval({ start: startDate, end: endDate });
-        colWidth = 100;
-        break;
-      case 'quarters':
-        dates = eachQuarterOfInterval({ start: startDate, end: endDate });
-        colWidth = 120;
-        break;
-      case 'years':
-        dates = eachYearOfInterval({ start: startDate, end: endDate });
-        colWidth = 150;
-        break;
-      default:
-        dates = eachWeekOfInterval({ start: startDate, end: endDate }, { weekStartsOn: 1 });
-        colWidth = 80;
-    }
-
-    return { dates, colWidth, startDate, endDate, totalDays };
+    return createTimeline(tasks, zoomLevel);
   }, [tasks, zoomLevel]);
-}
-
-function dateToX(date: Date, startDate: Date, dayWidth: number): number {
-  const days = differenceInCalendarDays(date, startDate);
-  return days * dayWidth;
 }
 
 function getBarColor(task: Task, showCritical: boolean): string {
@@ -123,25 +67,19 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
   const [tooltip, setTooltip] = useState<{ task: Task; x: number; y: number } | null>(null);
 
   const timeline = useTimeline(visibleTasks, project.settings.zoomLevel);
-  const dayWidth = timeline.colWidth / (
-    project.settings.zoomLevel === 'days' ? 1 :
-    project.settings.zoomLevel === 'weeks' ? 7 :
-    project.settings.zoomLevel === 'months' ? 30 :
-    project.settings.zoomLevel === 'quarters' ? 91 : 365
-  );
-
-  const totalWidth = timeline.dates.length * timeline.colWidth + timeline.colWidth;
+  const dragPixelsPerDay = getPixelsPerDayAtDate(dragging?.startDate || new Date(), timeline);
+  const totalWidth = timeline.totalWidth;
   const totalHeight = visibleTasks.length * ROW_HEIGHT;
 
   // Calculate bar positions
   const bars: BarInfo[] = useMemo(() => {
     return visibleTasks.map((task, rowIdx) => {
-      const x = dateToX(task.startDate, timeline.startDate, dayWidth);
-      const endX = dateToX(task.endDate, timeline.startDate, dayWidth);
+      const x = dateToX(task.startDate, timeline);
+      const endX = dateToX(task.endDate, timeline);
       const width = Math.max(MIN_BAR_WIDTH, endX - x);
       return { task, x, y: rowIdx * ROW_HEIGHT + ROW_HEIGHT / 2, width, rowIdx };
     });
-  }, [visibleTasks, timeline, dayWidth]);
+  }, [visibleTasks, timeline]);
 
   const barMap = useMemo(() => {
     const m = new Map<string, BarInfo>();
@@ -203,7 +141,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
 
       if (!dragging) return;
       const dx = e.clientX - dragging.startX;
-      const daysDelta = Math.round(dx / dayWidth);
+      const daysDelta = Math.round(dx / dragPixelsPerDay);
 
       if (dragging.type === 'bar') {
         const newStart = addDays(dragging.startDate, daysDelta);
@@ -263,7 +201,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragging, depDragFrom, dayWidth, visibleTasks, updateTask, addDependency, bars]);
+  }, [dragging, depDragFrom, dragPixelsPerDay, updateTask, addDependency, bars]);
 
   // Render dependency arrows
   const depArrows = useMemo(() => {
@@ -363,7 +301,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
   // Today line
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const todayX = dateToX(today, timeline.startDate, dayWidth);
+  const todayX = dateToX(today, timeline);
 
   return (
     <div
@@ -406,18 +344,19 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
           className="select-none"
         >
           {/* Background grid */}
-          {timeline.dates.map((date, i) => {
-            const x = i * timeline.colWidth;
+          {timeline.columns.map((column, i) => {
+            const date = column.date;
+            const x = dateToX(date, timeline);
             const isWknd = isWeekend(date) && project.settings.showWeekends;
             const isToday = isSameDay(date, today);
             return (
               <g key={i}>
                 {isWknd && (
-                  <rect x={x} y={0} width={timeline.colWidth} height={totalHeight + 20}
+                  <rect x={x} y={0} width={column.width} height={totalHeight + 20}
                     fill="#FEF3C7" opacity={0.3} />
                 )}
                 {isToday && (
-                  <rect x={x} y={0} width={timeline.colWidth} height={totalHeight + 20}
+                  <rect x={x} y={0} width={column.width} height={totalHeight + 20}
                     fill="#EFF6FF" opacity={0.5} />
                 )}
                 <line x1={x} y1={0} x2={x} y2={totalHeight + 20}
@@ -722,12 +661,12 @@ function renderTopHeaders(timeline: TimelineInfo, zoomLevel: string): React.Reac
 
 function formatColHeader(date: Date, zoomLevel: string): string {
   switch (zoomLevel) {
-    case 'days': return format(date, 'd');
-    case 'weeks': return `W${format(date, 'w')} ${format(date, 'MM/dd')}`;
-    case 'months': return format(date, 'MMM');
-    case 'quarters': return `Q${Math.ceil((date.getMonth() + 1) / 3)}`;
-    case 'years': return format(date, 'yyyy');
-    default: return format(date, 'MM/dd');
+    case 'days': return formatDisplayDate(date);
+    case 'weeks': return `W${format(date, 'w')} ${formatDisplayDate(date)}`;
+    case 'months': return formatDisplayDate(date);
+    case 'quarters': return `Q${Math.ceil((date.getMonth() + 1) / 3)} ${formatDisplayDate(date)}`;
+    case 'years': return formatDisplayDate(date);
+    default: return formatDisplayDate(date);
   }
 }
 

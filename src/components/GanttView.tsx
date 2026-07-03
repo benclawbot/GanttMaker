@@ -10,7 +10,8 @@ const DIVIDER_DEFAULT = 420;
 export function GanttView() {
   const { project, selection, selectTask, clearSelection, deleteSelectedTasks, addTask,
     indentTask, outdentTask, selectedDependencyId, deleteDependency, collapsedIds,
-    maxVisibleLevel, toggleCollapse, setMaxVisibleLevel, unfoldOneLevel, foldOneLevel } = useProject();
+    maxVisibleLevel, toggleCollapse, setMaxVisibleLevel, unfoldOneLevel, foldOneLevel,
+    taskNameEditRequestId, clearTaskNameEditRequest } = useProject();
 
   const [gridWidth, setGridWidth] = useState(DIVIDER_DEFAULT);
   const [isDraggingDivider, setIsDraggingDivider] = useState(false);
@@ -20,6 +21,14 @@ export function GanttView() {
 
   // Get visible tasks (respecting collapse state and maxVisibleLevel)
   const visibleTasks = getVisibleTasks(project.tasks, collapsedIds, maxVisibleLevel);
+
+  useEffect(() => {
+    if (!taskNameEditRequestId) return;
+    if (!visibleTasks.some((task) => task.id === taskNameEditRequestId)) return;
+
+    setEditingCell({ taskId: taskNameEditRequestId, field: 'name' });
+    clearTaskNameEditRequest(taskNameEditRequestId);
+  }, [clearTaskNameEditRequest, taskNameEditRequestId, visibleTasks]);
 
   // Keyboard shortcuts
   useEffect(() => {

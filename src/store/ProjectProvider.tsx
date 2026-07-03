@@ -38,6 +38,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const [maxVisibleLevel, setMaxVisibleLevelState] = useState<number>(-1); // -1 = use collapsedIds
   const [selection, setSelection] = useState<Set<string>>(new Set());
   const [selectedDependencyId, setSelectedDependencyId] = useState<string | null>(null);
+  const [taskNameEditRequestId, setTaskNameEditRequestId] = useState<string | null>(null);
   const [lastSelectedId, setLastSelectedId] = useState<string | null>(null);
 
   // ============================================================================
@@ -81,6 +82,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setSelection(new Set());
   }, []);
 
+  const clearTaskNameEditRequest = useCallback((id: string) => {
+    setTaskNameEditRequestId((current) => current === id ? null : current);
+  }, []);
+
   const toggleCollapse = useCallback((id: string) => {
     // Switching to individual collapse mode — clear maxVisibleLevel
     setMaxVisibleLevelState(-1);
@@ -117,11 +122,24 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   // Task Operations
   // ============================================================================
 
-  const addTask = useCallback((parentId?: string, afterId?: string) => {
+  const addTask = useCallback((parentId?: string, afterId?: string, options: {
+    name?: string;
+    type?: TaskType;
+    startDate?: Date;
+    duration?: number;
+    progress?: number;
+  } = {}) => {
+    const newTaskId = generateId();
+
     setProject((prev) => {
       const tasks = [...prev.tasks];
       const today = new Date();
       today.setHours(0, 0, 0, 0);
+      const startDate = options.startDate ? new Date(options.startDate) : today;
+      startDate.setHours(0, 0, 0, 0);
+      const isMilestone = options.type === TaskType.Milestone;
+      const duration = isMilestone ? 0 : Math.max(0, options.duration ?? 5);
+      const endDate = isMilestone ? new Date(startDate) : addDays(startDate, duration);
 
       // Determine insert position
       let insertIdx = tasks.length;
@@ -140,18 +158,18 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
       const level = parentId ? (tasks.find((t) => t.id === parentId)?.level ?? 0) + 1 : 0;
       const newTask: Task = {
-        id: generateId(),
-        name: 'New Task',
-        type: TaskType.Task,
+        id: newTaskId,
+        name: options.name || (isMilestone ? 'New Milestone' : 'New Task'),
+        type: isMilestone ? TaskType.Milestone : TaskType.Task,
         parentId,
         level,
         order: insertIdx,
-        startDate: today,
-        endDate: addDays(today, 5),
-        duration: 5,
-        progress: 0,
+        startDate,
+        endDate,
+        duration,
+        progress: Math.min(100, Math.max(0, options.progress ?? 0)),
         priority: 'Normal',
-        isMilestone: false,
+        isMilestone,
         isCritical: false,
         isCollapsed: false,
         resources: [],
@@ -172,13 +190,42 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
       return { ...prev, tasks: recalculateSummaryDates(tasks), isDirty: true };
     });
+
+    setView('gantt');
+    setSelectedDependencyId(null);
+    setSelection(new Set([newTaskId]));
+    setLastSelectedId(newTaskId);
+    setTaskNameEditRequestId(newTaskId);
+    return newTaskId;
   }, []);
+
+  const addMilestone = useCallback((parentId?: string, afterId?: string) => {
+    return addTask(parentId, afterId, { type: TaskType.Milestone, duration: 0 });
+  }, [addTask]);
 
   const updateTask = useCallback((id: string, updates: Partial<Task>) => {
     setProject((prev) => {
-      const tasks = prev.tasks.map((t) =>
-        t.id === id ? { ...t, ...updates } : t
-      );
+      const tasks = prev.tasks.map((t) => {
+        if (t.id !== id) return t;
+
+        const next = { ...t, ...updates };
+        const shouldBeMilestone = updates.isMilestone === true || updates.type === TaskType.Milestone;
+
+        if (updates.progress !== undefined) {
+          next.progress = Math.min(100, Math.max(0, updates.progress));
+        }
+
+        if (shouldBeMilestone) {
+          next.type = TaskType.Milestone;
+          next.isMilestone = true;
+          next.duration = 0;
+          next.endDate = new Date(next.startDate);
+        } else if (updates.isMilestone === false && t.type === TaskType.Milestone) {
+          next.type = TaskType.Task;
+        }
+
+        return next;
+      });
       return { ...prev, tasks: recalculateSummaryDates(tasks), isDirty: true };
     });
   }, []);
@@ -297,6 +344,19 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const setSelectedTasksProgress = useCallback((progress: number) => {
+    if (selection.size === 0) return;
+    const clamped = Math.min(100, Math.max(0, progress));
+
+    setProject((prev) => {
+      const selected = new Set(selection);
+      const tasks = prev.tasks.map((task) =>
+        selected.has(task.id) ? { ...task, progress: clamped } : task
+      );
+      return { ...prev, tasks: recalculateSummaryDates(tasks), isDirty: true };
+    });
+  }, [selection]);
+
   // ============================================================================
   // Dependency Operations
   // ============================================================================
@@ -322,6 +382,58 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     }));
     setSelectedDependencyId(null);
   }, []);
+
+  const linkSelectedTasks = useCallback(() => {
+    if (selection.size < 2) return;
+
+    setProject((prev) => {
+      const selected = new Set(selection);
+      const orderedIds = prev.tasks.filter((task) => selected.has(task.id)).map((task) => task.id);
+      if (orderedIds.length < 2) return prev;
+
+      let changed = false;
+      const dependencies = [...prev.dependencies];
+
+      for (let i = 0; i < orderedIds.length - 1; i += 1) {
+        const fromTaskId = orderedIds[i];
+        const toTaskId = orderedIds[i + 1];
+        const exists = dependencies.some(
+          (dep) => dep.fromTaskId === fromTaskId && dep.toTaskId === toTaskId
+        );
+        if (!exists) {
+          dependencies.push({
+            id: generateId(),
+            fromTaskId,
+            toTaskId,
+            type: DependencyType.FS,
+            lag: 0,
+          });
+          changed = true;
+        }
+      }
+
+      return changed ? { ...prev, dependencies, isDirty: true } : prev;
+    });
+  }, [selection]);
+
+  const unlinkSelectedTasks = useCallback(() => {
+    if (selectedDependencyId) {
+      deleteDependency(selectedDependencyId);
+      return;
+    }
+
+    if (selection.size < 2) return;
+
+    setProject((prev) => {
+      const selected = new Set(selection);
+      const dependencies = prev.dependencies.filter(
+        (dep) => !(selected.has(dep.fromTaskId) && selected.has(dep.toTaskId))
+      );
+
+      if (dependencies.length === prev.dependencies.length) return prev;
+      return { ...prev, dependencies, isDirty: true };
+    });
+  }, [deleteDependency, selectedDependencyId, selection]);
 
   // ============================================================================
   // Resource Operations
@@ -363,6 +475,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setMaxVisibleLevelState(-1);
     setSelection(new Set());
     setSelectedDependencyId(null);
+    setTaskNameEditRequestId(null);
   }, []);
 
   const newProject = useCallback(() => {
@@ -372,6 +485,7 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     setMaxVisibleLevelState(-1);
     setSelection(new Set());
     setSelectedDependencyId(null);
+    setTaskNameEditRequestId(null);
   }, []);
 
   const updateProjectName = useCallback((name: string) => {
@@ -526,15 +640,21 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     clearSelection,
     selectedDependencyId,
     selectDependency,
+    taskNameEditRequestId,
+    clearTaskNameEditRequest,
     addTask,
+    addMilestone,
     updateTask,
     deleteSelectedTasks,
     indentTask,
     outdentTask,
     moveTaskUp,
     moveTaskDown,
+    setSelectedTasksProgress,
     addDependency,
     deleteDependency,
+    linkSelectedTasks,
+    unlinkSelectedTasks,
     addResource,
     updateResource,
     deleteResource,
@@ -550,8 +670,10 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     project, view, collapsedIds, maxVisibleLevel, toggleCollapse, setMaxVisibleLevel,
     unfoldOneLevel, foldOneLevel, selection, selectTask,
     clearSelection, selectedDependencyId, selectDependency,
-    addTask, updateTask, deleteSelectedTasks, indentTask, outdentTask,
-    moveTaskUp, moveTaskDown, addDependency, deleteDependency,
+    taskNameEditRequestId, clearTaskNameEditRequest,
+    addTask, addMilestone, updateTask, deleteSelectedTasks, indentTask, outdentTask,
+    moveTaskUp, moveTaskDown, setSelectedTasksProgress,
+    addDependency, deleteDependency, linkSelectedTasks, unlinkSelectedTasks,
     addResource, updateResource, deleteResource,
     loadProject, newProject, updateProjectName, updateSettings,
     openFile, saveFile, saveAs, exportAs,
