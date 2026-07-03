@@ -43,6 +43,13 @@ export interface TimelineGuide {
   isMajor: boolean;
 }
 
+export interface TimelineHeaderSegment {
+  date: Date;
+  x: number;
+  width: number;
+  label: string;
+}
+
 export function formatTimelineColumnLabel(date: Date, zoomLevel: ZoomLevel): string {
   switch (zoomLevel) {
     case 'days':
@@ -56,6 +63,38 @@ export function formatTimelineColumnLabel(date: Date, zoomLevel: ZoomLevel): str
     case 'years':
       return format(date, 'yyyy');
   }
+}
+
+export function getTimelineHeaderSegments(
+  timeline: TimelineInfo,
+  groupBy: 'months' | 'years',
+  labelFormatOverride?: string,
+): TimelineHeaderSegment[] {
+  const segments: TimelineHeaderSegment[] = [];
+  const startOfGroup = groupBy === 'months' ? startOfMonth : startOfYear;
+  const addGroup = groupBy === 'months' ? addMonths : addYears;
+  const labelFormat = labelFormatOverride || (groupBy === 'months' ? 'MMM yyyy' : 'yyyy');
+  let groupStart = startOfGroup(timeline.startDate);
+
+  while (groupStart < timeline.endDate) {
+    const groupEnd = addGroup(groupStart, 1);
+    const segmentStart = groupStart < timeline.startDate ? timeline.startDate : groupStart;
+    const segmentEnd = groupEnd > timeline.endDate ? timeline.endDate : groupEnd;
+
+    if (segmentEnd > segmentStart) {
+      const x = dateToX(segmentStart, timeline);
+      segments.push({
+        date: groupStart,
+        x,
+        width: dateToX(segmentEnd, timeline) - x,
+        label: format(groupStart, labelFormat),
+      });
+    }
+
+    groupStart = groupEnd;
+  }
+
+  return segments;
 }
 
 type ZoomConfig = {
