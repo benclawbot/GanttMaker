@@ -3,6 +3,7 @@ import {
   createTimeline,
   dateToX,
   formatTimelineColumnLabel,
+  getTimelineHeaderSegments,
   getTimelineGuides,
 } from './ganttTimeline';
 import { TaskType, type Task } from '../types';
@@ -56,6 +57,24 @@ describe('gantt timeline positioning', () => {
     expect(july3Guide?.x).toBeCloseTo(july3X);
     expect(july3Guide!.x).toBeGreaterThan(weekStartX);
     expect(july3Guide!.x).toBeLessThan(weekStartX + timeline.colWidth);
+  });
+
+  it('splits weekly month headers at actual month boundaries inside week columns', () => {
+    const timeline = createTimeline(
+      [task(new Date(2026, 6, 3), new Date(2026, 6, 8))],
+      'weeks',
+      new Date(2026, 6, 3),
+    );
+
+    const segments = getTimelineHeaderSegments(timeline, 'months');
+    const july = segments.find((segment) => segment.label === 'Jul 2026');
+    const julyStartX = dateToX(new Date(2026, 6, 1), timeline);
+    const w27StartX = dateToX(new Date(2026, 5, 29), timeline);
+
+    expect(july).toBeDefined();
+    expect(july?.x).toBeCloseTo(julyStartX);
+    expect(july!.x).toBeGreaterThan(w27StartX);
+    expect(july!.x).toBeLessThan(w27StartX + timeline.colWidth);
   });
 
   it('positions month zoom dates using real calendar month lengths', () => {

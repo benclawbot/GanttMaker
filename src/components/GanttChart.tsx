@@ -1,7 +1,6 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import {
   differenceInCalendarDays, addDays, isWeekend, isSameDay,
-  format,
 } from 'date-fns';
 import { useProject } from '../store/projectStore';
 import type { Task, ZoomLevel } from '../types';
@@ -11,6 +10,7 @@ import {
   dateToX,
   formatTimelineColumnLabel,
   getPixelsPerDayAtDate,
+  getTimelineHeaderSegments,
   getTimelineGuides,
   type TimelineInfo,
 } from '../utils/ganttTimeline';
@@ -601,76 +601,49 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
 
 function renderTopHeaders(timeline: TimelineInfo, zoomLevel: string): React.ReactNode[] {
   if (zoomLevel === 'days') {
-    // Group by month
-    const months = new Map<string, { date: Date; count: number }>();
-    timeline.dates.forEach((date) => {
-      const key = format(date, 'yyyy-MM');
-      if (!months.has(key)) months.set(key, { date, count: 0 });
-      months.get(key)!.count++;
-    });
-    return Array.from(months.values()).map(({ date, count }, i) => (
+    return getTimelineHeaderSegments(timeline, 'months', 'MMMM yyyy').map(({ label, width }, i) => (
       <div
         key={i}
         className="flex-shrink-0 border-r border-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700 bg-gray-100"
-        style={{ width: count * timeline.colWidth }}
+        style={{ width }}
       >
-        {format(date, 'MMMM yyyy')}
+        {label}
       </div>
     ));
   }
 
   if (zoomLevel === 'weeks') {
-    // Group by month
-    const months = new Map<string, { date: Date; count: number }>();
-    timeline.dates.forEach((date) => {
-      const key = format(date, 'yyyy-MM');
-      if (!months.has(key)) months.set(key, { date, count: 0 });
-      months.get(key)!.count++;
-    });
-    return Array.from(months.values()).map(({ date, count }, i) => (
+    return getTimelineHeaderSegments(timeline, 'months').map(({ label, width }, i) => (
       <div
         key={i}
         className="flex-shrink-0 border-r border-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700 bg-gray-100"
-        style={{ width: count * timeline.colWidth }}
+        style={{ width }}
       >
-        {format(date, 'MMM yyyy')}
+        {label}
       </div>
     ));
   }
 
   if (zoomLevel === 'months') {
-    // Group by year
-    const years = new Map<string, { date: Date; count: number }>();
-    timeline.dates.forEach((date) => {
-      const key = format(date, 'yyyy');
-      if (!years.has(key)) years.set(key, { date, count: 0 });
-      years.get(key)!.count++;
-    });
-    return Array.from(years.values()).map(({ date, count }, i) => (
+    return getTimelineHeaderSegments(timeline, 'years').map(({ label, width }, i) => (
       <div
         key={i}
         className="flex-shrink-0 border-r border-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700 bg-gray-100"
-        style={{ width: count * timeline.colWidth }}
+        style={{ width }}
       >
-        {format(date, 'yyyy')}
+        {label}
       </div>
     ));
   }
 
   if (zoomLevel === 'quarters') {
-    const years = new Map<string, { date: Date; count: number }>();
-    timeline.dates.forEach((date) => {
-      const key = format(date, 'yyyy');
-      if (!years.has(key)) years.set(key, { date, count: 0 });
-      years.get(key)!.count++;
-    });
-    return Array.from(years.values()).map(({ date, count }, i) => (
+    return getTimelineHeaderSegments(timeline, 'years').map(({ label, width }, i) => (
       <div
         key={i}
         className="flex-shrink-0 border-r border-gray-300 flex items-center justify-center text-xs font-semibold text-gray-700 bg-gray-100"
-        style={{ width: count * timeline.colWidth }}
+        style={{ width }}
       >
-        {format(date, 'yyyy')}
+        {label}
       </div>
     ));
   }
