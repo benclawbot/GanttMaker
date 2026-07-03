@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useRef } from 'react';
-import { format } from 'date-fns';
+import React, { useRef } from 'react';
+import { addDays, differenceInCalendarDays } from 'date-fns';
 import { useProject } from '../store/projectStore';
-import { getVisibleTasks, hasChildren } from '../store/projectStore';
+import { hasChildren } from '../store/projectStore';
 import type { Task } from '../types';
 import { TaskType } from '../types';
+import { formatDisplayDate, parseDisplayDate } from '../utils/dates';
 
 interface TaskGridProps {
   tasks: Task[];
@@ -39,8 +40,8 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
       case 'id': return task.wbsCode || task.id;
       case 'name': return task.name;
       case 'duration': return task.isMilestone ? '0d' : `${task.duration}d`;
-      case 'startDate': return format(task.startDate, 'dd/MM/yyyy');
-      case 'endDate': return format(task.endDate, 'dd/MM/yyyy');
+      case 'startDate': return formatDisplayDate(task.startDate);
+      case 'endDate': return formatDisplayDate(task.endDate);
       case 'progress': return `${task.progress}%`;
       case 'resources': return getResourceNames(task.resources);
       default: return '';
@@ -54,27 +55,26 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
         break;
       case 'duration': {
         const days = parseInt(value) || 0;
-        const newEnd = new Date(task.startDate);
-        newEnd.setDate(newEnd.getDate() + days);
-        updateTask(task.id, { duration: days, endDate: newEnd });
+        updateTask(task.id, { duration: days, endDate: addDays(task.startDate, days) });
         break;
       }
       case 'progress':
         updateTask(task.id, { progress: Math.min(100, Math.max(0, parseInt(value) || 0)) });
         break;
       case 'startDate': {
-        const d = new Date(value);
-        if (!isNaN(d.getTime())) {
-          const newEnd = new Date(d);
-          newEnd.setDate(newEnd.getDate() + task.duration);
-          updateTask(task.id, { startDate: d, endDate: newEnd });
+        const d = parseDisplayDate(value);
+        if (d) {
+          updateTask(task.id, { startDate: d, endDate: addDays(d, task.duration) });
         }
         break;
       }
       case 'endDate': {
-        const d = new Date(value);
-        if (!isNaN(d.getTime())) {
-          updateTask(task.id, { endDate: d });
+        const d = parseDisplayDate(value);
+        if (d) {
+          updateTask(task.id, {
+            endDate: d,
+            duration: Math.max(0, differenceInCalendarDays(d, task.startDate)),
+          });
         }
         break;
       }
@@ -165,6 +165,7 @@ export function TaskGrid({ tasks, onRowClick, editingCell, onEditCell, onFinishE
                             defaultValue={task.name}
                             className="flex-1 text-xs border border-blue-400 px-1 outline-none bg-white"
                             style={{ height: rowHeight - 2 }}
+                            onFocus={(e) => e.currentTarget.select()}
                             onBlur={(e) => {
                               handleCellEdit(task, 'name', e.target.value);
                               onFinishEdit();

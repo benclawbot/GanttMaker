@@ -7,6 +7,8 @@ A modular Gantt chart maker application with native support for .gan (GanttProje
 - **Interactive Gantt Chart**: Create and edit Gantt charts with drag-and-drop task scheduling
 - **.gan File Support**: Open and save GanttProject .gan files natively
 - **Task Dependencies**: Create Finish-to-Start dependencies between tasks
+- **Calendar-Accurate Dates**: Display task dates as `dd/mm/yyyy` and keep Gantt bars aligned to exact task start and finish dates across day, week, month, quarter, and year zoom levels
+- **Ribbon Task Controls**: Add tasks or milestones, link/unlink selected tasks, and set selected task progress to 0% or 100% from the Task ribbon
 - **Modern UI**: Clean, responsive interface built with React and Tailwind CSS
 - **Modular Architecture**: Well-organized codebase designed for easy extension and LLM navigation
 

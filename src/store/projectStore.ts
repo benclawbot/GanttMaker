@@ -240,6 +240,14 @@ export function recalculateSummaryDates(tasks: Task[]): Task[] {
   return result;
 }
 
+export interface AddTaskOptions {
+  name?: string;
+  type?: TaskType;
+  startDate?: Date;
+  duration?: number;
+  progress?: number;
+}
+
 // ============================================================================
 // Context
 // ============================================================================
@@ -261,19 +269,25 @@ export interface ProjectContextType {
   clearSelection: () => void;
   selectedDependencyId: string | null;
   selectDependency: (id: string | null) => void;
+  taskNameEditRequestId: string | null;
+  clearTaskNameEditRequest: (id: string) => void;
   
   // Task operations
-  addTask: (parentId?: string, afterId?: string) => void;
+  addTask: (parentId?: string, afterId?: string, options?: AddTaskOptions) => string;
+  addMilestone: (parentId?: string, afterId?: string) => string;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteSelectedTasks: () => void;
   indentTask: (id: string) => void;
   outdentTask: (id: string) => void;
   moveTaskUp: (id: string) => void;
   moveTaskDown: (id: string) => void;
+  setSelectedTasksProgress: (progress: number) => void;
   
   // Dependency operations
   addDependency: (dep: Omit<Dependency, 'id'>) => void;
   deleteDependency: (id: string) => void;
+  linkSelectedTasks: () => void;
+  unlinkSelectedTasks: () => void;
   
   // Resource operations
   addResource: (resource: Omit<Resource, 'id'>) => void;

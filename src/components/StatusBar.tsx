@@ -1,6 +1,6 @@
 import React from 'react';
 import { useProject } from '../store/projectStore';
-import { format } from 'date-fns';
+import { formatDisplayDate } from '../utils/dates';
 
 export function StatusBar() {
   const { project, selection } = useProject();
@@ -53,9 +53,9 @@ export function StatusBar() {
 
       {/* Dates */}
       <div>
-        Start: {format(project.startDate, 'MM/dd/yyyy')}
+        Start: {formatDisplayDate(project.startDate)}
         {' → '}
-        End: {format(projectEnd, 'MM/dd/yyyy')}
+        End: {formatDisplayDate(projectEnd)}
       </div>
 
       {/* Selection info */}
