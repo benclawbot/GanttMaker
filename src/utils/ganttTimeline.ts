@@ -43,6 +43,21 @@ export interface TimelineGuide {
   isMajor: boolean;
 }
 
+export function formatTimelineColumnLabel(date: Date, zoomLevel: ZoomLevel): string {
+  switch (zoomLevel) {
+    case 'days':
+      return format(date, 'dd');
+    case 'weeks':
+      return `W${format(date, 'w')}`;
+    case 'months':
+      return format(date, 'MMM');
+    case 'quarters':
+      return `Q${Math.ceil((date.getMonth() + 1) / 3)}`;
+    case 'years':
+      return format(date, 'yyyy');
+  }
+}
+
 type ZoomConfig = {
   colWidth: number;
   startOfPeriod: (date: Date) => Date;
