@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/ganttmaker-banner.svg" alt="Gantt Chart Maker" width="100%" />
+</p>
+
 # Gantt Chart Maker
 
 A modular Gantt chart maker application with native support for .gan (GanttProject) files.
