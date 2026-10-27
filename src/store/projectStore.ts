@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react';
 import type {
-  Project, Task, Dependency, Resource, Assignment, ProjectSettings, ZoomLevel
+  Project, Task, Dependency, Resource, ProjectSettings
 } from '../types';
 import { TaskType, DependencyType } from '../types';
 import { addDays, differenceInCalendarDays } from 'date-fns';

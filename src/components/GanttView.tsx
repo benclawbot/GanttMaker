@@ -10,7 +10,7 @@ const DIVIDER_DEFAULT = 420;
 export function GanttView() {
   const { project, selection, selectTask, clearSelection, deleteSelectedTasks, addTask,
     indentTask, outdentTask, selectedDependencyId, deleteDependency, collapsedIds,
-    maxVisibleLevel, toggleCollapse, setMaxVisibleLevel, unfoldOneLevel, foldOneLevel,
+    maxVisibleLevel, setMaxVisibleLevel, unfoldOneLevel, foldOneLevel,
     taskNameEditRequestId, clearTaskNameEditRequest } = useProject();
 
   const [gridWidth, setGridWidth] = useState(DIVIDER_DEFAULT);

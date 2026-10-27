@@ -5,15 +5,14 @@
  *
  * Key GAN format rules:
  * - Dates: YYYY-MM-DD
- * - Duration: in working days. GAN computes endDate = startDate + duration - 1.
- *   e.g. start=Jan 13, duration=5 → task spans Jan 13-17 (5 days).
- *   When exporting: duration = (endDate - startDate) + 1
+ * - Duration: in working days. This app uses an exclusive endDate
+ *   (endDate = startDate + duration), so GAN duration = endDate - startDate.
  * - Milestones: always meeting="true" duration="0"
  * - Project tasks: project="true"
  */
 
-import type { Project, Task, Dependency, Resource } from '../types';
-import { DependencyType, TaskType } from '../types';
+import type { Project, Task, Dependency } from '../types';
+import { DependencyType, TaskType, ConstraintType } from '../types';
 import { differenceInDays } from 'date-fns';
 
 function depTypeToGan(type: DependencyType): string {
@@ -23,16 +22,6 @@ function depTypeToGan(type: DependencyType): string {
     case DependencyType.FS: return '2';
     case DependencyType.FF: return '3';
     default: return '2';
-  }
-}
-
-function ganDepTypeToDep(type: string): DependencyType {
-  switch (type) {
-    case '0': return DependencyType.SS;
-    case '1': return DependencyType.SF;
-    case '2': return DependencyType.FS;
-    case '3': return DependencyType.FF;
-    default: return DependencyType.FS;
   }
 }
 
@@ -46,9 +35,7 @@ function priorityToGan(priority: Task['priority']): string {
   }
 }
 
-function constraintToGanThirdDateConstraint(
-  constraint: Task['customFields'] extends Record<string, infer V> ? V : never
-): number | undefined {
+function constraintToGanThirdDateConstraint(constraint: ConstraintType | undefined): number | undefined {
   if (!constraint) return undefined;
   switch (constraint) {
     case 'FNET': return 0; // finish no earlier than
@@ -95,7 +82,7 @@ function renderTasks(tasks: Task[], parentId: string | undefined, deps: Dependen
     // Milestones always use duration=0.
     const dur = task.type === TaskType.Milestone
       ? 0
-      : Math.max(1, differenceInDays(task.endDate, task.startDate) + 1);
+      : Math.max(1, differenceInDays(task.endDate, task.startDate));
 
     // Build attribute string conditionally (only include attributes with values)
     const attrs: string[] = [];
@@ -103,7 +90,9 @@ function renderTasks(tasks: Task[], parentId: string | undefined, deps: Dependen
     if (task.uid) attrs.push(`uid="${escapeXml(task.uid)}"`);
     attrs.push(`name="${escapeXml(task.name)}"`);
     if (task.color) attrs.push(`color="${escapeXml(task.color)}"`);
-    if (task.shape) attrs.push(`shape="${escapeXml(task.shape)}"`);
+    if (task.customFields?.shape) {
+      attrs.push(`shape="${escapeXml(String(task.customFields.shape))}"`);
+    }
     // Milestone marker
     attrs.push(`meeting="${task.type === TaskType.Milestone ? 'true' : 'false'}"`);
     // Project task marker
@@ -122,7 +111,7 @@ function renderTasks(tasks: Task[], parentId: string | undefined, deps: Dependen
     const thirdDate = task.customFields?.thirdDate as Date | undefined;
     if (thirdDate) {
       attrs.push(`thirdDate="${formatGanDate(thirdDate)}"`);
-      const c = constraintToGanThirdDateConstraint(task.customFields?.thirdDateConstraint as any);
+      const c = constraintToGanThirdDateConstraint(task.customFields?.thirdDateConstraint as ConstraintType | undefined);
       if (c !== undefined) attrs.push(`thirdDate-constraint="${c}"`);
     }
 

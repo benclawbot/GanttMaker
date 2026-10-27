@@ -7,7 +7,6 @@ import {
   generateId,
   getDescendants,
   recalculateSummaryDates,
-  getChildren,
 } from './projectStore';
 import type { ProjectContextType } from './projectStore';
 import { parseGanFile } from '../parsers/ganParser';
@@ -507,25 +506,28 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
   const openFile = useCallback(async () => {
     // Try File System Access API first (works when app is installed as PWA)
     if ('showOpenFilePicker' in window) {
-      try {
-        const [handle] = await window.showOpenFilePicker({
-          types: [
-            {
-              description: 'GanttProject files',
-              accept: { 'application/xml': ['.gan', '.xml'], 'application/octet-stream': ['.mpp'] },
-            },
-          ],
-        });
-        const file = await handle.getFile();
-        const result = await parseFileByExtension(file);
-        loadProject({ ...result.project, name: file.name.replace(/\.[^.]+$/, '') });
-        if (result.warnings.length > 0) {
-          alert(`Imported with ${result.warnings.length} warning(s):\n\n${result.warnings.slice(0, 3).join('\n')}`);
+      const showOpenFilePicker = window.showOpenFilePicker;
+      if (showOpenFilePicker) {
+        try {
+          const [handle] = await showOpenFilePicker({
+            types: [
+              {
+                description: 'GanttProject files',
+                accept: { 'application/xml': ['.gan', '.xml'], 'application/octet-stream': ['.mpp'] },
+              },
+            ],
+          });
+          const file = await handle.getFile();
+          const result = await parseFileByExtension(file);
+          loadProject({ ...result.project, name: file.name.replace(/\.[^.]+$/, '') });
+          if (result.warnings.length > 0) {
+            alert(`Imported with ${result.warnings.length} warning(s):\n\n${result.warnings.slice(0, 3).join('\n')}`);
+          }
+          return;
+        } catch (err: unknown) {
+          if ((err as Error)?.name === 'AbortError') return; // User cancelled
+          // Fall through to fallback on other errors
         }
-        return;
-      } catch (err: unknown) {
-        if ((err as Error)?.name === 'AbortError') return; // User cancelled
-        // Fall through to fallback on other errors
       }
     }
 
@@ -555,22 +557,25 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
 
     // Try File System Access API first — lets user choose the save directory
     if ('showSaveFilePicker' in window) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName,
-          types: [
-            {
-              description: 'GanttProject files',
-              accept: { 'application/xml': ['.gan'] },
-            },
-          ],
-        });
-        await writeFileHandle(xml, handle);
-        setProject((prev) => ({ ...prev, name: handle.name.replace(/\.gan$/, ''), isDirty: false }));
-        return;
-      } catch (err: unknown) {
-        if ((err as Error)?.name === 'AbortError') return; // User cancelled
-        // Fall through to fallback on other errors
+      const showSaveFilePicker = window.showSaveFilePicker;
+      if (showSaveFilePicker) {
+        try {
+          const handle = await showSaveFilePicker({
+            suggestedName,
+            types: [
+              {
+                description: 'GanttProject files',
+                accept: { 'application/xml': ['.gan'] },
+              },
+            ],
+          });
+          await writeFileHandle(xml, handle);
+          setProject((prev) => ({ ...prev, name: handle.name.replace(/\.gan$/, ''), isDirty: false }));
+          return;
+        } catch (err: unknown) {
+          if ((err as Error)?.name === 'AbortError') return; // User cancelled
+          // Fall through to fallback on other errors
+        }
       }
     }
 
@@ -587,22 +592,25 @@ export function ProjectProvider({ children }: { children: React.ReactNode }) {
     const xml = exportToGan(project);
 
     if ('showSaveFilePicker' in window) {
-      try {
-        const handle = await window.showSaveFilePicker({
-          suggestedName,
-          types: [
-            {
-              description: 'GanttProject files',
-              accept: { 'application/xml': ['.gan'] },
-            },
-          ],
-        });
-        await writeFileHandle(xml, handle);
-        setProject((prev) => ({ ...prev, isDirty: false }));
-        return;
-      } catch (err: unknown) {
-        if ((err as Error)?.name === 'AbortError') return;
-        // Fall through to fallback on other errors
+      const showSaveFilePicker = window.showSaveFilePicker;
+      if (showSaveFilePicker) {
+        try {
+          const handle = await showSaveFilePicker({
+            suggestedName,
+            types: [
+              {
+                description: 'GanttProject files',
+                accept: { 'application/xml': ['.gan'] },
+              },
+            ],
+          });
+          await writeFileHandle(xml, handle);
+          setProject((prev) => ({ ...prev, isDirty: false }));
+          return;
+        } catch (err: unknown) {
+          if ((err as Error)?.name === 'AbortError') return;
+          // Fall through to fallback on other errors
+        }
       }
     }
 

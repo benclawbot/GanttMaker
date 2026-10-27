@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { format } from 'date-fns';
 import { useProject } from '../store/projectStore';
 import type { Resource } from '../types';
 
@@ -143,26 +142,25 @@ export function ResourceView() {
           </thead>
           <tbody>
             {project.resources.map((resource, idx) => (
-              <ResourceRow
-                key={resource.id}
-                resource={resource}
-                idx={idx}
-                taskCount={getTaskCountForResource(resource.id)}
-                tasks={getTasksForResource(resource.id)}
-                isEditing={editingId === resource.id}
-                onEdit={() => setEditingId(resource.id)}
-                onSave={(updates) => {
-                  updateResource(resource.id, updates);
-                  setEditingId(null);
-                }}
-                onDelete={() => {
-                  if (window.confirm(`Delete resource "${resource.name}"?`)) {
-                    deleteResource(resource.id);
-                  }
-                }}
-                onCancel={() => setEditingId(null)}
-                colors={COLORS}
-              />
+                <ResourceRow
+                  key={resource.id}
+                  resource={resource}
+                  idx={idx}
+                  taskCount={getTaskCountForResource(resource.id)}
+                  isEditing={editingId === resource.id}
+                  onEdit={() => setEditingId(resource.id)}
+                  onSave={(updates) => {
+                    updateResource(resource.id, updates);
+                    setEditingId(null);
+                  }}
+                  onDelete={() => {
+                    if (window.confirm(`Delete resource "${resource.name}"?`)) {
+                      deleteResource(resource.id);
+                    }
+                  }}
+                  onCancel={() => setEditingId(null)}
+                  colors={COLORS}
+                />
             ))}
           </tbody>
         </table>
@@ -222,7 +220,6 @@ interface ResourceRowProps {
   resource: Resource;
   idx: number;
   taskCount: number;
-  tasks: ReturnType<typeof useProject>['project']['tasks'];
   isEditing: boolean;
   onEdit: () => void;
   onSave: (updates: Partial<Resource>) => void;
@@ -231,7 +228,7 @@ interface ResourceRowProps {
   colors: string[];
 }
 
-function ResourceRow({ resource, idx, taskCount, tasks, isEditing, onEdit, onSave, onDelete, onCancel, colors }: ResourceRowProps) {
+function ResourceRow({ resource, idx, taskCount, isEditing, onEdit, onSave, onDelete, onCancel, colors }: ResourceRowProps) {
   const [editData, setEditData] = useState<Partial<Resource>>({ ...resource });
 
   if (isEditing) {

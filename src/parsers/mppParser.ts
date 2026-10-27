@@ -15,9 +15,9 @@
  */
 
 import type { Project, Task, Dependency, Resource, Assignment } from '../types';
-import { TaskType, DependencyType, ConstraintType } from '../types';
+import { TaskType, DependencyType } from '../types';
 import { generateId, defaultSettings } from '../store/projectStore';
-import { addDays, parseISO } from 'date-fns';
+import { addDays } from 'date-fns';
 
 interface ImportResult {
   project: Project;

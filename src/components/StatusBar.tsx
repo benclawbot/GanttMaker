@@ -1,13 +1,14 @@
 import React from 'react';
 import { useProject } from '../store/projectStore';
 import { formatDisplayDate } from '../utils/dates';
+import { TaskType } from '../types';
 
 export function StatusBar() {
   const { project, selection } = useProject();
 
   const selectedTasks = project.tasks.filter((t) => selection.has(t.id));
-  const totalTasks = project.tasks.filter((t) => t.type !== 'summary').length;
-  const completedTasks = project.tasks.filter((t) => t.type !== 'summary' && t.progress === 100).length;
+  const totalTasks = project.tasks.filter((t) => t.type !== TaskType.Summary).length;
+  const completedTasks = project.tasks.filter((t) => t.type !== TaskType.Summary && t.progress === 100).length;
   const avgProgress = totalTasks > 0
     ? Math.round(project.tasks.filter(t => t.type !== 'summary').reduce((a, t) => a + t.progress, 0) / Math.max(1, totalTasks))
     : 0;

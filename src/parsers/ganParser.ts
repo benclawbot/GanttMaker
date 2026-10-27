@@ -5,11 +5,13 @@
  *
  * Key GAN format rules discovered from GanttProject source:
  * - Dates in .gan files are in YYYY-MM-DD format (no time component).
- * - Duration is in working days. Duration=N means task ends on (start + N - 1) days.
- *   e.g. start=Jan 13, duration=5 → task spans Jan 13,14,15,16,17 (5 days).
- *   So endDate = addDays(startDate, duration - 1) for non-milestones.
- *   Milestones always have endDate = startDate.
+ * - Duration is in working days. Duration=N means task spans N days starting
+ *   at 'start', ending on (start + N). This app uses an exclusive endDate
+ *   (endDate = startDate + duration), consistent with addTask and
+ *   recalculateSummaryDates, so imported duration matches endDate.
+ *   e.g. start=Jan 13, duration=5 → endDate = Jan 18.
  * - GAN milestone: meeting="true" OR (no meeting attr AND duration=0).
+ *   Milestones always have endDate = startDate.
  */
 
 import type { Project, Task, Dependency, Resource, Assignment } from '../types';
@@ -179,13 +181,12 @@ function parseGanTasks(
     const duration = parseInt(durStr) || 1;
     const isMilestone = isMeeting || (meetingAttr !== 'false' && duration === 0);
 
-    // Critical: endDate = startDate + (duration - 1) for regular tasks.
-    // In GAN format, duration=N means the task spans N days starting at 'start',
-    // ending on day (start + N - 1). Milestones always end at their start date.
+    // endDate = startDate + duration (exclusive), consistent with the app's
+    // internal model so imported duration matches endDate.
     const startDate = parseGanDate(startStr) || new Date();
     const endDate = isMilestone
       ? new Date(startDate)
-      : addDays(startDate, duration - 1);
+      : addDays(startDate, duration);
 
     const progress = parseInt(completionStr) || 0;
     const color = taskEl.getAttribute('color') || undefined;

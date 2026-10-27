@@ -9,13 +9,13 @@ import { TaskPropertiesPanel } from './components/TaskPropertiesPanel';
 import { StatusBar } from './components/StatusBar';
 
 function AppContent() {
-  const { view, project, openFile, saveFile } = useProject();
+  const { view, project, openFile, saveFile, newProject } = useProject();
 
   // Global keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey)) {
-        switch (e.key) {
+        switch (e.key.toLowerCase()) {
           case 's':
             e.preventDefault();
             saveFile();
@@ -23,6 +23,10 @@ function AppContent() {
           case 'o':
             e.preventDefault();
             openFile();
+            break;
+          case 'n':
+            e.preventDefault();
+            newProject();
             break;
         }
       }

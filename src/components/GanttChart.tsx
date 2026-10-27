@@ -48,7 +48,7 @@ function getBarColor(task: Task, showCritical: boolean): string {
 }
 
 export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: GanttChartProps) {
-  const { project, selection, selectTask, clearSelection, addDependency, deleteDependency,
+  const { project, selection, selectTask, clearSelection, addDependency,
     selectedDependencyId, selectDependency, updateTask } = useProject();
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
@@ -65,7 +65,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
   const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [depDragFrom, setDepDragFrom] = useState<{ taskId: string; side: 'start' | 'end'; x: number; y: number } | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [tooltip, setTooltip] = useState<{ task: Task; x: number; y: number } | null>(null);
+  const [, setTooltip] = useState<{ task: Task; x: number; y: number } | null>(null);
 
   const timeline = useTimeline(visibleTasks, project.settings.zoomLevel);
   const timelineGuides = useMemo(
@@ -412,7 +412,7 @@ export function GanttChart({ visibleTasks, scrollTop, onScrollTopChange }: Gantt
           <g>{depArrows}</g>
 
           {/* Task Bars */}
-          {bars.map(({ task, x, y, width, rowIdx }) => {
+          {bars.map(({ task, x, y, width }) => {
             const isSelected = selection.has(task.id);
             const isMilestone = task.isMilestone || task.type === TaskType.Milestone;
             const isSummary = task.type === TaskType.Summary;
